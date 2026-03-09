@@ -18,40 +18,36 @@ class TimeSlotWithCross extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final disabled = showCross || !isAvailable;
+
     return GestureDetector(
-      onTap: isAvailable && !showCross ? onTap : null,
-      child: Container(
-        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-        margin: const EdgeInsets.symmetric(horizontal: 4, vertical: 4),
+      onTap: !disabled ? onTap : null,
+      child: AnimatedContainer(
+        duration: const Duration(milliseconds: 200),
+        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+        margin: const EdgeInsets.all(4),
         decoration: BoxDecoration(
           color: _getBackgroundColor(),
-          borderRadius: BorderRadius.circular(8),
+          borderRadius: BorderRadius.circular(24),
           border: Border.all(
             color: _getBorderColor(),
             width: isSelected ? 2 : 1,
           ),
+          boxShadow: isSelected
+              ? [BoxShadow(color: _getBorderColor().withValues(alpha: 0.3), blurRadius: 8, spreadRadius: 1)]
+              : null,
         ),
-        child: Stack(
-          alignment: Alignment.center,
-          children: [
-            Text(
-              timeSlot,
-              style: TextStyle(
-                fontSize: 16,
-                fontWeight: isSelected ? FontWeight.bold : FontWeight.normal,
-                color: _getTextColor(),
-                decoration: showCross ? TextDecoration.lineThrough : null,
-                decorationColor: Colors.red,
-                decorationThickness: 2,
-              ),
-            ),
-            if (showCross)
-              Positioned.fill(
-                child: CustomPaint(
-                  painter: CrossPainter(),
-                ),
-              ),
-          ],
+        child: Text(
+          timeSlot,
+          textAlign: TextAlign.center,
+          style: TextStyle(
+            fontSize: 14,
+            fontWeight: isSelected ? FontWeight.bold : FontWeight.w500,
+            color: _getTextColor(),
+            decoration: showCross ? TextDecoration.lineThrough : null,
+            decorationColor: Colors.red.withValues(alpha: 0.7),
+            decorationThickness: 2,
+          ),
         ),
       ),
     );
@@ -59,7 +55,7 @@ class TimeSlotWithCross extends StatelessWidget {
 
   Color _getBackgroundColor() {
     if (showCross || !isAvailable) {
-      return Colors.grey.shade200;
+      return Colors.grey.shade200.withValues(alpha: 0.5);
     }
     if (isSelected) {
       return Colors.blue.shade50;
@@ -69,7 +65,7 @@ class TimeSlotWithCross extends StatelessWidget {
 
   Color _getBorderColor() {
     if (showCross || !isAvailable) {
-      return Colors.grey.shade400;
+      return Colors.grey.shade300;
     }
     if (isSelected) {
       return Colors.blue;
@@ -79,37 +75,13 @@ class TimeSlotWithCross extends StatelessWidget {
 
   Color _getTextColor() {
     if (showCross || !isAvailable) {
-      return Colors.grey.shade500;
+      return Colors.grey.shade400;
     }
     if (isSelected) {
       return Colors.blue;
     }
     return Colors.black87;
   }
-}
-
-class CrossPainter extends CustomPainter {
-  @override
-  void paint(Canvas canvas, Size size) {
-    final paint = Paint()
-      ..color = Colors.red.withOpacity(0.6)
-      ..strokeWidth = 2
-      ..style = PaintingStyle.stroke;
-
-    canvas.drawLine(
-      Offset(size.width * 0.2, size.height * 0.3),
-      Offset(size.width * 0.8, size.height * 0.7),
-      paint,
-    );
-    canvas.drawLine(
-      Offset(size.width * 0.8, size.height * 0.3),
-      Offset(size.width * 0.2, size.height * 0.7),
-      paint,
-    );
-  }
-
-  @override
-  bool shouldRepaint(covariant CustomPainter oldDelegate) => false;
 }
 
 class TimeSlotGrid extends StatelessWidget {
@@ -128,18 +100,14 @@ class TimeSlotGrid extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return GridView.builder(
-      shrinkWrap: true,
-      physics: const NeverScrollableScrollPhysics(),
-      gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
-        crossAxisCount: 3,
-        childAspectRatio: 2.2,
-        crossAxisSpacing: 8,
-        mainAxisSpacing: 8,
-      ),
-      itemCount: timeSlots.length,
-      itemBuilder: (context, index) {
-        final slot = timeSlots[index];
+    final width = MediaQuery.of(context).size.width;
+    final crossAxisCount = width > 600 ? 5 : (width > 400 ? 4 : 3);
+
+    return Wrap(
+      alignment: WrapAlignment.center,
+      spacing: 4,
+      runSpacing: 4,
+      children: timeSlots.map((slot) {
         final hora = slot['hora'] as String;
         final isAvailable = slot['available'] as bool;
         final showCross = slot['showCross'] as bool? ?? false;
@@ -158,7 +126,7 @@ class TimeSlotGrid extends StatelessWidget {
             }
           },
         );
-      },
+      }).toList(),
     );
   }
 }
@@ -186,7 +154,7 @@ class CapacityInfoWidget extends StatelessWidget {
       padding: const EdgeInsets.all(16),
       margin: const EdgeInsets.symmetric(vertical: 8),
       decoration: BoxDecoration(
-        color: _getCapacityColor().withOpacity(0.1),
+        color: _getCapacityColor().withValues(alpha: 0.1),
         borderRadius: BorderRadius.circular(12),
         border: Border.all(
           color: _getCapacityColor(),

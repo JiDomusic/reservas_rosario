@@ -46,6 +46,15 @@ String? _getTenantFromUrl() {
   }
 }
 
+Widget _getInitialScreen(AppConfig config) {
+  // Si el admin está logueado y no completó onboarding → mostrar dashboard
+  if (!config.onboardingCompleted && SupabaseService.instance.isLoggedIn) {
+    return const AdminDashboardScreen();
+  }
+  // Para todos los demás casos (cliente, admin no logueado) → home normal
+  return const SplashScreen();
+}
+
 class ReservaApp extends StatelessWidget {
   const ReservaApp({super.key});
 
@@ -63,9 +72,7 @@ class ReservaApp extends StatelessWidget {
         ),
         useMaterial3: true,
       ),
-      home: config.onboardingCompleted
-          ? const SplashScreen()
-          : const AdminDashboardScreen(),
+      home: _getInitialScreen(config),
     );
   }
 }
