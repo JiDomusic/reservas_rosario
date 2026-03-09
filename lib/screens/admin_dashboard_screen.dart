@@ -16,6 +16,7 @@ import '../services/customer_confirmation_service.dart';
 import '../services/reminder_service.dart';
 import '../services/waitlist_service.dart';
 import '../services/whatsapp_service.dart';
+import 'package:supabase_flutter/supabase_flutter.dart';
 import '../services/supabase_service.dart';
 import 'home_screen.dart';
 import 'reports_tab.dart';
@@ -44,6 +45,123 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen>
     super.dispose();
   }
 
+  void _showChangePassword(BuildContext context) {
+    final newPassCtrl = TextEditingController();
+    final confirmPassCtrl = TextEditingController();
+
+    showDialog(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        backgroundColor: const Color(0xFF1A1E25),
+        title: const Text('Cambiar Contraseña', style: TextStyle(color: Colors.white)),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            TextField(
+              controller: newPassCtrl,
+              obscureText: true,
+              style: const TextStyle(color: Colors.white),
+              decoration: InputDecoration(
+                labelText: 'Nueva contraseña',
+                labelStyle: TextStyle(color: Colors.white.withValues(alpha: 0.6)),
+                prefixIcon: Icon(Icons.lock, color: Colors.white.withValues(alpha: 0.6)),
+                enabledBorder: OutlineInputBorder(
+                  borderRadius: BorderRadius.circular(12),
+                  borderSide: BorderSide(color: Colors.white.withValues(alpha: 0.2)),
+                ),
+                focusedBorder: OutlineInputBorder(
+                  borderRadius: BorderRadius.circular(12),
+                  borderSide: const BorderSide(color: Color(0xFF64FFDA)),
+                ),
+                filled: true,
+                fillColor: Colors.white.withValues(alpha: 0.05),
+              ),
+            ),
+            const SizedBox(height: 12),
+            TextField(
+              controller: confirmPassCtrl,
+              obscureText: true,
+              style: const TextStyle(color: Colors.white),
+              decoration: InputDecoration(
+                labelText: 'Confirmar contraseña',
+                labelStyle: TextStyle(color: Colors.white.withValues(alpha: 0.6)),
+                prefixIcon: Icon(Icons.lock_outline, color: Colors.white.withValues(alpha: 0.6)),
+                enabledBorder: OutlineInputBorder(
+                  borderRadius: BorderRadius.circular(12),
+                  borderSide: BorderSide(color: Colors.white.withValues(alpha: 0.2)),
+                ),
+                focusedBorder: OutlineInputBorder(
+                  borderRadius: BorderRadius.circular(12),
+                  borderSide: const BorderSide(color: Color(0xFF64FFDA)),
+                ),
+                filled: true,
+                fillColor: Colors.white.withValues(alpha: 0.05),
+              ),
+            ),
+          ],
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(ctx),
+            child: const Text('Cancelar'),
+          ),
+          ElevatedButton(
+            onPressed: () async {
+              final newPass = newPassCtrl.text;
+              final confirmPass = confirmPassCtrl.text;
+
+              if (newPass.length < 6) {
+                ScaffoldMessenger.of(context).showSnackBar(
+                  const SnackBar(
+                    content: Text('La contraseña debe tener al menos 6 caracteres'),
+                    backgroundColor: Colors.orange,
+                  ),
+                );
+                return;
+              }
+
+              if (newPass != confirmPass) {
+                ScaffoldMessenger.of(context).showSnackBar(
+                  const SnackBar(
+                    content: Text('Las contraseñas no coinciden'),
+                    backgroundColor: Colors.orange,
+                  ),
+                );
+                return;
+              }
+
+              try {
+                await SupabaseService.instance.client.auth.updateUser(
+                  UserAttributes(password: newPass),
+                );
+                if (ctx.mounted) Navigator.pop(ctx);
+                if (mounted) {
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    const SnackBar(
+                      content: Text('Contraseña cambiada con éxito'),
+                      backgroundColor: Color(0xFF64FFDA),
+                    ),
+                  );
+                }
+              } catch (e) {
+                if (mounted) {
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    SnackBar(
+                      content: Text('Error: $e'),
+                      backgroundColor: Colors.red,
+                    ),
+                  );
+                }
+              }
+            },
+            style: ElevatedButton.styleFrom(backgroundColor: const Color(0xFF64FFDA)),
+            child: const Text('Cambiar', style: TextStyle(color: Color(0xFF0A0E14))),
+          ),
+        ],
+      ),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -66,6 +184,11 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen>
                 (route) => false,
               );
             },
+          ),
+          IconButton(
+            icon: const Icon(Icons.lock_outline, color: Colors.white70),
+            tooltip: 'Cambiar contraseña',
+            onPressed: () => _showChangePassword(context),
           ),
           IconButton(
             icon: const Icon(Icons.logout, color: Colors.white70),
@@ -1063,17 +1186,80 @@ class _HorariosTabState extends State<_HorariosTab> {
       return;
     }
 
-    final id = 'h_${DateTime.now().millisecondsSinceEpoch}';
-    setState(() {
-      _hours.add(OperatingHours(
-        id: id,
-        diaSemana: 2,
-        area: areas.first.nombre,
-        horaInicio: '12:00',
-        horaFin: '15:00',
-        intervaloMinutos: 30,
-      ));
-    });
+    int day = 1;
+    String area = areas.first.nombre;
+    final startCtrl = TextEditingController(text: '12:00');
+    final endCtrl = TextEditingController(text: '15:00');
+    int interval = 30;
+
+    showDialog(
+      context: context,
+      builder: (ctx) => StatefulBuilder(
+        builder: (ctx, setDialogState) => AlertDialog(
+          backgroundColor: const Color(0xFF1A1E25),
+          title: const Text('Nuevo Horario', style: TextStyle(color: Colors.white)),
+          content: SingleChildScrollView(
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                DropdownButton<int>(
+                  value: day,
+                  dropdownColor: const Color(0xFF1A1E25),
+                  style: const TextStyle(color: Colors.white),
+                  isExpanded: true,
+                  items: List.generate(7, (i) => DropdownMenuItem(value: i, child: Text(_dayNames[i]))),
+                  onChanged: (v) => setDialogState(() => day = v!),
+                ),
+                const SizedBox(height: 8),
+                DropdownButton<String>(
+                  value: area,
+                  dropdownColor: const Color(0xFF1A1E25),
+                  style: const TextStyle(color: Colors.white),
+                  isExpanded: true,
+                  items: areas.map((a) => DropdownMenuItem(value: a.nombre, child: Text(a.nombreDisplay))).toList(),
+                  onChanged: (v) => setDialogState(() => area = v!),
+                ),
+                const SizedBox(height: 8),
+                _dialogTextField2('Hora inicio (HH:MM)', startCtrl),
+                _dialogTextField2('Hora fin (HH:MM)', endCtrl),
+                Row(
+                  children: [
+                    Text('Intervalo: ', style: TextStyle(color: Colors.white.withValues(alpha: 0.7))),
+                    DropdownButton<int>(
+                      value: interval,
+                      dropdownColor: const Color(0xFF1A1E25),
+                      style: const TextStyle(color: Colors.white),
+                      items: [15, 30, 45, 60].map((v) => DropdownMenuItem(value: v, child: Text('$v min'))).toList(),
+                      onChanged: (v) => setDialogState(() => interval = v!),
+                    ),
+                  ],
+                ),
+              ],
+            ),
+          ),
+          actions: [
+            TextButton(onPressed: () => Navigator.pop(ctx), child: const Text('Cancelar')),
+            TextButton(
+              onPressed: () {
+                final id = 'h_${DateTime.now().millisecondsSinceEpoch}';
+                setState(() {
+                  _hours.add(OperatingHours(
+                    id: id,
+                    diaSemana: day,
+                    area: area,
+                    horaInicio: startCtrl.text,
+                    horaFin: endCtrl.text,
+                    intervaloMinutos: interval,
+                  ));
+                });
+                Navigator.pop(ctx);
+              },
+              child: const Text('Agregar', style: TextStyle(color: Color(0xFF64FFDA))),
+            ),
+          ],
+        ),
+      ),
+    );
   }
 
   void _editHour(int index) {
