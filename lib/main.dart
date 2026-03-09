@@ -47,11 +47,7 @@ String? _getTenantFromUrl() {
 }
 
 Widget _getInitialScreen(AppConfig config) {
-  // Si el admin está logueado y no completó onboarding → mostrar dashboard
-  if (!config.onboardingCompleted && SupabaseService.instance.isLoggedIn) {
-    return const AdminDashboardScreen();
-  }
-  // Para todos los demás casos (cliente, admin no logueado) → home normal
+  // Always show splash → home. Admin accesses dashboard via login button.
   return const SplashScreen();
 }
 

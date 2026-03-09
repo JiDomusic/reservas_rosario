@@ -3,6 +3,7 @@ import 'dart:ui';
 import 'home_screen.dart';
 import 'admin_dashboard_screen.dart';
 import '../config/app_config.dart';
+import '../services/supabase_service.dart';
 
 class SplashScreen extends StatefulWidget {
   const SplashScreen({super.key});
@@ -60,19 +61,7 @@ class _SplashScreenState extends State<SplashScreen>
 
     final config = AppConfig.instance;
 
-    if (!config.onboardingCompleted) {
-      Navigator.of(context).pushReplacement(
-        PageRouteBuilder(
-          pageBuilder: (context, animation, secondaryAnimation) =>
-              const AdminDashboardScreen(),
-          transitionsBuilder: (context, animation, secondaryAnimation, child) {
-            return FadeTransition(opacity: animation, child: child);
-          },
-          transitionDuration: const Duration(milliseconds: 800),
-        ),
-      );
-      return;
-    }
+    // Always go to home. Admin accesses dashboard via login button.
 
     Navigator.of(context).pushReplacement(
       PageRouteBuilder(

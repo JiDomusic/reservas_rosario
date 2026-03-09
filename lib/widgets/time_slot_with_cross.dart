@@ -24,11 +24,12 @@ class TimeSlotWithCross extends StatelessWidget {
       onTap: !disabled ? onTap : null,
       child: AnimatedContainer(
         duration: const Duration(milliseconds: 200),
-        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
-        margin: const EdgeInsets.all(4),
+        width: 56,
+        height: 56,
+        margin: const EdgeInsets.all(2),
         decoration: BoxDecoration(
           color: _getBackgroundColor(),
-          borderRadius: BorderRadius.circular(24),
+          shape: BoxShape.circle,
           border: Border.all(
             color: _getBorderColor(),
             width: isSelected ? 2 : 1,
@@ -37,16 +38,18 @@ class TimeSlotWithCross extends StatelessWidget {
               ? [BoxShadow(color: _getBorderColor().withValues(alpha: 0.3), blurRadius: 8, spreadRadius: 1)]
               : null,
         ),
-        child: Text(
-          timeSlot,
-          textAlign: TextAlign.center,
-          style: TextStyle(
-            fontSize: 14,
-            fontWeight: isSelected ? FontWeight.bold : FontWeight.w500,
-            color: _getTextColor(),
-            decoration: showCross ? TextDecoration.lineThrough : null,
-            decorationColor: Colors.red.withValues(alpha: 0.7),
-            decorationThickness: 2,
+        child: Center(
+          child: Text(
+            timeSlot,
+            textAlign: TextAlign.center,
+            style: TextStyle(
+              fontSize: 12,
+              fontWeight: isSelected ? FontWeight.bold : FontWeight.w500,
+              color: _getTextColor(),
+              decoration: showCross ? TextDecoration.lineThrough : null,
+              decorationColor: Colors.red.withValues(alpha: 0.7),
+              decorationThickness: 2,
+            ),
           ),
         ),
       ),
@@ -98,35 +101,63 @@ class TimeSlotGrid extends StatelessWidget {
     required this.guests,
   }) : super(key: key);
 
+  Widget _buildSlot(Map<String, dynamic> slot) {
+    final hora = slot['hora'] as String;
+    final isAvailable = slot['available'] as bool;
+    final showCross = slot['showCross'] as bool? ?? false;
+    final blockTwoGuests = slot['blockTwoGuests'] as bool? ?? false;
+    final shouldShowCross = showCross || (blockTwoGuests && guests == 2);
+
+    return TimeSlotWithCross(
+      timeSlot: hora,
+      isAvailable: isAvailable && !shouldShowCross,
+      showCross: shouldShowCross,
+      isSelected: selectedTimeSlot == hora,
+      onTap: () {
+        if (isAvailable && !shouldShowCross) {
+          onTimeSlotSelected(hora);
+        }
+      },
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
-    final width = MediaQuery.of(context).size.width;
-    final crossAxisCount = width > 600 ? 5 : (width > 400 ? 4 : 3);
+    // Separar en almuerzo (antes de 18:00) y cena (18:00+)
+    final lunch = timeSlots.where((s) {
+      final h = int.tryParse((s['hora'] as String).split(':')[0]) ?? 0;
+      return h < 18;
+    }).toList();
+    final dinner = timeSlots.where((s) {
+      final h = int.tryParse((s['hora'] as String).split(':')[0]) ?? 0;
+      return h >= 18;
+    }).toList();
 
-    return Wrap(
-      alignment: WrapAlignment.center,
-      spacing: 4,
-      runSpacing: 4,
-      children: timeSlots.map((slot) {
-        final hora = slot['hora'] as String;
-        final isAvailable = slot['available'] as bool;
-        final showCross = slot['showCross'] as bool? ?? false;
-        final blockTwoGuests = slot['blockTwoGuests'] as bool? ?? false;
-
-        final shouldShowCross = showCross || (blockTwoGuests && guests == 2);
-
-        return TimeSlotWithCross(
-          timeSlot: hora,
-          isAvailable: isAvailable && !shouldShowCross,
-          showCross: shouldShowCross,
-          isSelected: selectedTimeSlot == hora,
-          onTap: () {
-            if (isAvailable && !shouldShowCross) {
-              onTimeSlotSelected(hora);
-            }
-          },
-        );
-      }).toList(),
+    return Column(
+      children: [
+        if (lunch.isNotEmpty) ...[
+          Text('Mediodía', style: TextStyle(color: Colors.white.withValues(alpha: 0.5), fontSize: 13, fontWeight: FontWeight.w600)),
+          const SizedBox(height: 8),
+          Wrap(
+            alignment: WrapAlignment.center,
+            spacing: 6,
+            runSpacing: 6,
+            children: lunch.map(_buildSlot).toList(),
+          ),
+        ],
+        if (lunch.isNotEmpty && dinner.isNotEmpty)
+          const SizedBox(height: 20),
+        if (dinner.isNotEmpty) ...[
+          Text('Noche', style: TextStyle(color: Colors.white.withValues(alpha: 0.5), fontSize: 13, fontWeight: FontWeight.w600)),
+          const SizedBox(height: 8),
+          Wrap(
+            alignment: WrapAlignment.center,
+            spacing: 6,
+            runSpacing: 6,
+            children: dinner.map(_buildSlot).toList(),
+          ),
+        ],
+      ],
     );
   }
 }
