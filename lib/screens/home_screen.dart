@@ -73,6 +73,78 @@ class _HomeScreenState extends State<HomeScreen> {
     return '';
   }
 
+  void _showSuperAdminAuth(BuildContext context) {
+    final pinCtrl = TextEditingController();
+    const superAdminPin = '991474';
+
+    showDialog(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        backgroundColor: const Color(0xFF1A1E25),
+        title: const Text('Super Admin', style: TextStyle(color: Colors.white)),
+        content: TextField(
+          controller: pinCtrl,
+          obscureText: true,
+          keyboardType: TextInputType.number,
+          maxLength: 6,
+          style: const TextStyle(color: Colors.white, letterSpacing: 8, fontSize: 24),
+          textAlign: TextAlign.center,
+          decoration: InputDecoration(
+            labelText: 'PIN de acceso',
+            labelStyle: TextStyle(color: Colors.white.withValues(alpha: 0.6)),
+            counterText: '',
+            enabledBorder: OutlineInputBorder(
+              borderRadius: BorderRadius.circular(12),
+              borderSide: BorderSide(color: Colors.white.withValues(alpha: 0.2)),
+            ),
+            focusedBorder: OutlineInputBorder(
+              borderRadius: BorderRadius.circular(12),
+              borderSide: const BorderSide(color: Color(0xFF64FFDA)),
+            ),
+            filled: true,
+            fillColor: Colors.white.withValues(alpha: 0.05),
+          ),
+          onSubmitted: (value) {
+            if (value == superAdminPin) {
+              Navigator.pop(ctx);
+              Navigator.of(context).push(
+                MaterialPageRoute(builder: (_) => const SuperAdminScreen()),
+              );
+            } else {
+              ScaffoldMessenger.of(context).showSnackBar(
+                const SnackBar(content: Text('PIN incorrecto'), backgroundColor: Colors.red),
+              );
+              Navigator.pop(ctx);
+            }
+          },
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(ctx),
+            child: const Text('Cancelar'),
+          ),
+          ElevatedButton(
+            onPressed: () {
+              if (pinCtrl.text == superAdminPin) {
+                Navigator.pop(ctx);
+                Navigator.of(context).push(
+                  MaterialPageRoute(builder: (_) => const SuperAdminScreen()),
+                );
+              } else {
+                ScaffoldMessenger.of(context).showSnackBar(
+                  const SnackBar(content: Text('PIN incorrecto'), backgroundColor: Colors.red),
+                );
+                Navigator.pop(ctx);
+              }
+            },
+            style: ElevatedButton.styleFrom(backgroundColor: const Color(0xFF64FFDA)),
+            child: const Text('Entrar', style: TextStyle(color: Color(0xFF0A0E14))),
+          ),
+        ],
+      ),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     final config = AppConfig.instance;
@@ -142,9 +214,7 @@ class _HomeScreenState extends State<HomeScreen> {
                             mainAxisAlignment: MainAxisAlignment.end,
                             children: [
                               GestureDetector(
-                                onLongPress: () => Navigator.of(context).push(
-                                  MaterialPageRoute(builder: (_) => const SuperAdminScreen()),
-                                ),
+                                onLongPress: () => _showSuperAdminAuth(context),
                                 onTap: () => Navigator.of(context).push(
                                   PageRouteBuilder(
                                     pageBuilder: (context, animation,
