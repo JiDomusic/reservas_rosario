@@ -264,16 +264,26 @@ class _ConfigTabState extends State<_ConfigTab> {
     c.strictTableOptimization = _strictTableOpt;
     c.onboardingCompleted = true;
 
-    await c.saveToLocal();
-    // PIN removed — authentication handled by Supabase auth
-
-    if (mounted) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text('Configuración guardada'),
-          backgroundColor: Color(0xFF64FFDA),
-        ),
-      );
+    try {
+      await c.saveToLocal();
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('Configuración guardada con éxito'),
+            backgroundColor: Color(0xFF64FFDA),
+          ),
+        );
+      }
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Error al guardar configuración: $e'),
+            backgroundColor: Colors.red,
+            duration: const Duration(seconds: 5),
+          ),
+        );
+      }
     }
   }
 
@@ -676,11 +686,23 @@ class _AreasTabState extends State<_AreasTab> {
   Future<void> _save() async {
     AppConfig.instance.areas = _areas;
     AppConfig.instance.tables = _tables;
-    await AppConfig.instance.saveToLocal();
-    if (mounted) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Áreas y mesas guardadas'), backgroundColor: Color(0xFF64FFDA)),
-      );
+    try {
+      await AppConfig.instance.saveToLocal();
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Áreas y mesas guardadas con éxito'), backgroundColor: Color(0xFF64FFDA)),
+        );
+      }
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Error al guardar áreas y mesas: $e'),
+            backgroundColor: Colors.red,
+            duration: const Duration(seconds: 5),
+          ),
+        );
+      }
     }
   }
 
@@ -1012,11 +1034,23 @@ class _HorariosTabState extends State<_HorariosTab> {
 
   Future<void> _save() async {
     AppConfig.instance.operatingHours = _hours;
-    await AppConfig.instance.saveToLocal();
-    if (mounted) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Horarios guardados'), backgroundColor: Color(0xFF64FFDA)),
-      );
+    try {
+      await AppConfig.instance.saveToLocal();
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Horarios guardados con éxito'), backgroundColor: Color(0xFF64FFDA)),
+        );
+      }
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Error al guardar horarios: $e'),
+            backgroundColor: Colors.red,
+            duration: const Duration(seconds: 5),
+          ),
+        );
+      }
     }
   }
 
@@ -1359,15 +1393,27 @@ class _OperacionesTabState extends State<_OperacionesTab> {
   }
 
   Future<void> _saveBanner() async {
-    await LocalSiteStatusService.saveBannerSettings(
-      enabled: _bannerEnabled,
-      reopenDate: _bannerDate,
-      message: _bannerTextCtrl.text,
-    );
-    if (mounted) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Banner guardado'), backgroundColor: Color(0xFF64FFDA)),
+    try {
+      await LocalSiteStatusService.saveBannerSettings(
+        enabled: _bannerEnabled,
+        reopenDate: _bannerDate,
+        message: _bannerTextCtrl.text,
       );
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Banner guardado con éxito'), backgroundColor: Color(0xFF64FFDA)),
+        );
+      }
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Error al guardar banner: $e'),
+            backgroundColor: Colors.red,
+            duration: const Duration(seconds: 5),
+          ),
+        );
+      }
     }
   }
 
