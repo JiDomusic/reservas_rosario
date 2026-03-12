@@ -3,7 +3,6 @@ import 'package:flutter/material.dart';
 import 'config/app_config.dart';
 import 'services/supabase_service.dart';
 import 'screens/splash_screen.dart';
-import 'screens/admin_dashboard_screen.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -11,8 +10,17 @@ void main() async {
   // Initialize Supabase
   await SupabaseService.initialize();
 
-  // Determinar tenant_id
-  final tenantId = _getTenantFromUrl() ?? 'demo';
+  // Determinar tenant_id: primero de la URL, luego del usuario logueado, luego 'demo'
+  String tenantId = _getTenantFromUrl() ?? 'demo';
+
+  // Si hay sesión activa, usar el tenant del usuario logueado
+  if (SupabaseService.instance.isLoggedIn && tenantId == 'demo') {
+    final userTenant = await SupabaseService.instance.getTenantIdForCurrentUser();
+    if (userTenant != null) {
+      tenantId = userTenant;
+    }
+  }
+
   SupabaseService.instance.setTenantId(tenantId);
 
   // Load app config from Supabase

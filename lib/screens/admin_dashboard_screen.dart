@@ -831,13 +831,14 @@ class _AreasTabState extends State<_AreasTab> {
 
   void _addArea() {
     final id = 'area_${DateTime.now().millisecondsSinceEpoch}';
+    final num = _areas.length + 1;
     setState(() {
       _areas.add(AreaConfig(
         id: id,
-        nombre: 'nueva_area',
-        nombreDisplay: 'Nueva Área',
+        nombre: 'area_$num',
+        nombreDisplay: 'Área $num',
         capacidadReal: 20,
-        capacidadFrontend: 20,
+        capacidadFrontend: 16, // 80% de 20
         horaInicio: '12:00',
         horaFin: '23:00',
       ));
@@ -846,24 +847,28 @@ class _AreasTabState extends State<_AreasTab> {
 
   void _editArea(int index) {
     final area = _areas[index];
-    final nameCtrl = TextEditingController(text: area.nombre);
     final displayCtrl = TextEditingController(text: area.nombreDisplay);
     final realCapCtrl = TextEditingController(text: '${area.capacidadReal}');
-    final frontCapCtrl = TextEditingController(text: '${area.capacidadFrontend}');
 
     showDialog(
       context: context,
       builder: (ctx) => AlertDialog(
         backgroundColor: const Color(0xFF1A1E25),
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
         title: const Text('Editar Área', style: TextStyle(color: Colors.white)),
         content: SingleChildScrollView(
           child: Column(
             mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              _dialogTextField('Nombre interno', nameCtrl),
-              _dialogTextField('Nombre display', displayCtrl),
-              _dialogTextField('Capacidad real', realCapCtrl),
-              _dialogTextField('Capacidad frontend', frontCapCtrl),
+              _dialogTextField('Nombre del área', displayCtrl),
+              const SizedBox(height: 4),
+              _dialogTextField('Capacidad (personas)', realCapCtrl),
+              const SizedBox(height: 8),
+              Text(
+                'Cuántas personas entran en total en esta zona del restaurante. El sistema reserva un 80% y deja el 20% para imprevistos.',
+                style: TextStyle(color: Colors.white.withValues(alpha: 0.4), fontSize: 11, height: 1.4),
+              ),
             ],
           ),
         ),
@@ -871,13 +876,25 @@ class _AreasTabState extends State<_AreasTab> {
           TextButton(onPressed: () => Navigator.pop(ctx), child: const Text('Cancelar')),
           TextButton(
             onPressed: () {
+              final realCap = int.tryParse(realCapCtrl.text) ?? area.capacidadReal;
+              final frontendCap = (realCap * 0.8).round();
+              final slug = displayCtrl.text
+                  .toLowerCase()
+                  .replaceAll(RegExp(r'[áà]'), 'a')
+                  .replaceAll(RegExp(r'[éè]'), 'e')
+                  .replaceAll(RegExp(r'[íì]'), 'i')
+                  .replaceAll(RegExp(r'[óò]'), 'o')
+                  .replaceAll(RegExp(r'[úù]'), 'u')
+                  .replaceAll(RegExp(r'[ñ]'), 'n')
+                  .replaceAll(RegExp(r'[^a-z0-9]'), '_')
+                  .replaceAll(RegExp(r'_+'), '_');
               setState(() {
                 _areas[index] = AreaConfig(
                   id: area.id,
-                  nombre: nameCtrl.text,
+                  nombre: slug.isNotEmpty ? slug : area.nombre,
                   nombreDisplay: displayCtrl.text,
-                  capacidadReal: int.tryParse(realCapCtrl.text) ?? area.capacidadReal,
-                  capacidadFrontend: int.tryParse(frontCapCtrl.text) ?? area.capacidadFrontend,
+                  capacidadReal: realCap,
+                  capacidadFrontend: frontendCap,
                   horaInicio: area.horaInicio,
                   horaFin: area.horaFin,
                 );
@@ -893,10 +910,11 @@ class _AreasTabState extends State<_AreasTab> {
 
   void _addTable(String areaName) {
     final id = 'mesa_${DateTime.now().millisecondsSinceEpoch}';
+    final tablesInArea = _tables.where((t) => t.area == areaName).length;
     setState(() {
       _tables.add(TableDefinition(
         id: id,
-        nombre: 'Mesa nueva',
+        nombre: 'Mesa ${tablesInArea + 1}',
         area: areaName,
         minCapacidad: 2,
         maxCapacidad: 4,
@@ -989,7 +1007,8 @@ class _AreasTabState extends State<_AreasTab> {
 
   @override
   Widget build(BuildContext context) {
-    final totalCapacity = _areas.fold<int>(0, (sum, a) => sum + a.capacidadFrontend);
+    final totalReal = _areas.fold<int>(0, (sum, a) => sum + a.capacidadReal);
+    final totalReservable = _areas.fold<int>(0, (sum, a) => sum + a.capacidadFrontend);
 
     return ListView(
       padding: const EdgeInsets.all(16),
@@ -999,8 +1018,8 @@ class _AreasTabState extends State<_AreasTab> {
             const Expanded(
               child: Text('Áreas', style: TextStyle(color: Color(0xFF64FFDA), fontSize: 16, fontWeight: FontWeight.w600)),
             ),
-            Text('Capacidad total: $totalCapacity',
-                style: TextStyle(color: Colors.white.withValues(alpha: 0.7), fontSize: 13)),
+            Text('$totalReal personas | $totalReservable reservables',
+                style: TextStyle(color: Colors.white.withValues(alpha: 0.7), fontSize: 12)),
             const SizedBox(width: 12),
             IconButton(
               icon: const Icon(Icons.add_circle, color: Color(0xFF64FFDA)),
@@ -1052,7 +1071,7 @@ class _AreasTabState extends State<_AreasTab> {
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     Text(area.nombreDisplay, style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 15)),
-                    Text('${area.nombre} | Real: ${area.capacidadReal} | Frontend: ${area.capacidadFrontend}',
+                    Text('${area.capacidadReal} personas | ${area.capacidadFrontend} reservables',
                         style: TextStyle(color: Colors.white.withValues(alpha: 0.5), fontSize: 12)),
                   ],
                 ),
@@ -1553,18 +1572,30 @@ class _OperacionesTabState extends State<_OperacionesTab> {
   }
 
   Future<void> _loadAll() async {
+    if (!mounted) return;
     setState(() => _loading = true);
 
-    // Process auto-release and expired confirmations
-    _autoReleased = await AutoReleaseService.processAutoRelease();
-    _expiredConfirmations = await CustomerConfirmationService.processExpiredConfirmations();
+    try {
+      // Process auto-release and expired confirmations
+      _autoReleased = await AutoReleaseService.processAutoRelease();
+      _expiredConfirmations = await CustomerConfirmationService.processExpiredConfirmations();
 
-    _reservations = await LocalReservationService.getReservationsForDate(_selectedDate);
-    LocalReservationService.clearReservationsCache();
-    _reminders = await ReminderService.getPendingReminders();
-    _waitlist = await WaitlistService.getWaitlistForDate(_selectedDate);
-
-    if (mounted) setState(() => _loading = false);
+      _reservations = await LocalReservationService.getReservationsForDate(_selectedDate);
+      LocalReservationService.clearReservationsCache();
+      _reminders = await ReminderService.getPendingReminders();
+      _waitlist = await WaitlistService.getWaitlistForDate(_selectedDate);
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Error al cargar datos: $e'),
+            backgroundColor: Colors.red,
+          ),
+        );
+      }
+    } finally {
+      if (mounted) setState(() => _loading = false);
+    }
   }
 
   Future<void> _loadBanner() async {

@@ -6,6 +6,7 @@ import '../services/local_block_service.dart';
 import '../services/confirmation_code_service.dart';
 import '../widgets/advanced_calendar.dart';
 import '../widgets/time_slot_with_cross.dart';
+import '../widgets/urgency_banner.dart';
 import 'reservation_confirmation_screen.dart';
 import 'waitlist_confirmation_screen.dart';
 import '../services/waitlist_service.dart';
@@ -31,6 +32,10 @@ class _ReservationFlowScreenState extends State<ReservationFlowScreen> {
   String? _selectedTime;
   List<Map<String, dynamic>> _timeSlots = [];
   bool _loadingSlots = false;
+
+  // Capacidad disponible para el slot seleccionado
+  int _availableCapacity = 0;
+  int _totalCapacity = 0;
 
   // Step 4: Datos del cliente
   final _nameCtrl = TextEditingController();
@@ -82,10 +87,22 @@ class _ReservationFlowScreenState extends State<ReservationFlowScreen> {
       final isBlocked = blockStatus.isDayBlocked || blockStatus.blockedHours.contains(hora);
       final isOutside = RestaurantService.isOutsideAdvanceTime(_selectedDate!, hora, _selectedGuests!);
 
+      // Cargar capacidad disponible para cada slot
+      final capacityInfo = await LocalReservationService.getAvailableCapacity(
+        fecha: _selectedDate!,
+        hora: hora,
+      );
+
+      final available = (capacityInfo['available'] ?? 0) as int;
+      final totalCap = (capacityInfo['total_capacity'] ?? 0) as int;
+      final noCapacity = available < _selectedGuests!;
+
       slots.add({
         'hora': hora,
-        'available': !isBlocked && !isOutside,
-        'showCross': isBlocked || isOutside,
+        'available': !isBlocked && !isOutside && !noCapacity,
+        'showCross': isBlocked || isOutside || noCapacity,
+        'availableCapacity': available,
+        'totalCapacity': totalCap,
       });
     }
 
@@ -94,6 +111,8 @@ class _ReservationFlowScreenState extends State<ReservationFlowScreen> {
         _timeSlots = slots;
         _loadingSlots = false;
         _selectedTime = null;
+        _availableCapacity = 0;
+        _totalCapacity = 0;
       });
     }
   }
@@ -120,15 +139,14 @@ class _ReservationFlowScreenState extends State<ReservationFlowScreen> {
       if (validation['valid'] != true) {
         if (mounted) {
           final errorMsg = validation['error'] ?? 'Error de validación';
-          // Si el error es por capacidad, ofrecer waitlist
-          if (errorMsg.contains('No hay mas lugar') || errorMsg.contains('capacidad')) {
-            setState(() => _submitting = false);
+          setState(() => _submitting = false);
+          // Si el error es por capacidad o demanda, ofrecer waitlist
+          if (errorMsg.contains('No hay mas lugar') ||
+              errorMsg.contains('capacidad') ||
+              errorMsg.contains('alta demanda')) {
             _showWaitlistDialog(errorMsg);
           } else {
-            ScaffoldMessenger.of(context).showSnackBar(
-              SnackBar(content: Text(errorMsg)),
-            );
-            setState(() => _submitting = false);
+            _showErrorDialog(errorMsg);
           }
         }
         return;
@@ -163,20 +181,43 @@ class _ReservationFlowScreenState extends State<ReservationFlowScreen> {
             ),
           );
         } else {
-          ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(content: Text(result['error'] ?? 'Error al crear reserva')),
-          );
+          _showErrorDialog(result['error'] ?? 'Error al crear reserva');
         }
       }
     } catch (e) {
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Error: $e')),
-        );
+        _showErrorDialog('Error al procesar la reserva. Intentá de nuevo.');
       }
     } finally {
       if (mounted) setState(() => _submitting = false);
     }
+  }
+
+  void _showErrorDialog(String message) {
+    showDialog(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        backgroundColor: const Color(0xFF1A1E25),
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+        title: const Row(
+          children: [
+            Icon(Icons.info_outline, color: Color(0xFFFFB74D), size: 24),
+            SizedBox(width: 10),
+            Text('Aviso', style: TextStyle(color: Colors.white, fontSize: 18)),
+          ],
+        ),
+        content: Text(
+          message,
+          style: TextStyle(color: Colors.white.withValues(alpha: 0.8), fontSize: 14, height: 1.4),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(ctx),
+            child: const Text('Entendido', style: TextStyle(color: Color(0xFF64FFDA))),
+          ),
+        ],
+      ),
+    );
   }
 
   void _showWaitlistDialog(String errorMsg) {
@@ -184,58 +225,135 @@ class _ReservationFlowScreenState extends State<ReservationFlowScreen> {
       context: context,
       builder: (ctx) => AlertDialog(
         backgroundColor: const Color(0xFF1A1E25),
-        title: const Text('Sin disponibilidad', style: TextStyle(color: Colors.white)),
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+        contentPadding: const EdgeInsets.all(24),
         content: Column(
           mainAxisSize: MainAxisSize.min,
-          crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Text(errorMsg, style: TextStyle(color: Colors.white.withValues(alpha: 0.7))),
+            // Icono grande animado
+            Container(
+              width: 70,
+              height: 70,
+              decoration: BoxDecoration(
+                shape: BoxShape.circle,
+                gradient: RadialGradient(
+                  colors: [
+                    const Color(0xFFFF6B6B).withValues(alpha: 0.3),
+                    const Color(0xFFFF6B6B).withValues(alpha: 0.05),
+                  ],
+                ),
+                border: Border.all(color: const Color(0xFFFF6B6B).withValues(alpha: 0.5), width: 2),
+              ),
+              child: const Icon(Icons.whatshot_rounded, color: Color(0xFFFF6B6B), size: 36),
+            ),
             const SizedBox(height: 16),
             const Text(
-              'Te gustaría unirte a la lista de espera? Te avisaremos si se libera un lugar.',
-              style: TextStyle(color: Colors.amber, fontSize: 13),
+              'Horario muy solicitado',
+              style: TextStyle(
+                color: Colors.white,
+                fontSize: 20,
+                fontWeight: FontWeight.w600,
+              ),
+            ),
+            const SizedBox(height: 12),
+            Container(
+              padding: const EdgeInsets.all(14),
+              decoration: BoxDecoration(
+                color: const Color(0xFFFF6B6B).withValues(alpha: 0.1),
+                borderRadius: BorderRadius.circular(12),
+                border: Border.all(color: const Color(0xFFFF6B6B).withValues(alpha: 0.2)),
+              ),
+              child: Row(
+                children: [
+                  const Icon(Icons.info_outline, color: Color(0xFFFF6B6B), size: 20),
+                  const SizedBox(width: 10),
+                  Expanded(
+                    child: Text(
+                      errorMsg,
+                      style: TextStyle(color: Colors.white.withValues(alpha: 0.8), fontSize: 13, height: 1.4),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+            const SizedBox(height: 16),
+            Container(
+              padding: const EdgeInsets.all(14),
+              decoration: BoxDecoration(
+                color: const Color(0xFFFFB74D).withValues(alpha: 0.1),
+                borderRadius: BorderRadius.circular(12),
+                border: Border.all(color: const Color(0xFFFFB74D).withValues(alpha: 0.2)),
+              ),
+              child: Row(
+                children: [
+                  const Icon(Icons.notifications_active, color: Color(0xFFFFB74D), size: 20),
+                  const SizedBox(width: 10),
+                  Expanded(
+                    child: Text(
+                      'Unite a la lista de espera y te avisamos cuando se libere un lugar.',
+                      style: TextStyle(color: Colors.white.withValues(alpha: 0.7), fontSize: 13, height: 1.3),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+            const SizedBox(height: 24),
+            // Botón principal - lista de espera
+            SizedBox(
+              width: double.infinity,
+              child: ElevatedButton.icon(
+                onPressed: () async {
+                  Navigator.pop(ctx);
+                  if (_nameCtrl.text.trim().isEmpty || _phoneCtrl.text.trim().isEmpty) {
+                    _showErrorDialog('Completá nombre y teléfono primero');
+                    return;
+                  }
+                  await WaitlistService.addToWaitlist(
+                    fecha: _selectedDate!,
+                    hora: _selectedTime!,
+                    personas: _selectedGuests!,
+                    nombre: _nameCtrl.text.trim(),
+                    telefono: _phoneCtrl.text.trim(),
+                    email: _emailCtrl.text.trim().isEmpty ? null : _emailCtrl.text.trim(),
+                    comentarios: _commentCtrl.text.trim().isEmpty ? null : _commentCtrl.text.trim(),
+                  );
+                  if (mounted) {
+                    Navigator.of(context).pushReplacement(
+                      MaterialPageRoute(
+                        builder: (_) => WaitlistConfirmationScreen(
+                          nombre: _nameCtrl.text.trim(),
+                          fecha: _selectedDate!,
+                          hora: _selectedTime!,
+                          personas: _selectedGuests!,
+                        ),
+                      ),
+                    );
+                  }
+                },
+                icon: const Icon(Icons.notifications_active, size: 18),
+                label: const Text('Unirme a la lista de espera', style: TextStyle(fontWeight: FontWeight.w600)),
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: const Color(0xFFFFB74D),
+                  foregroundColor: const Color(0xFF0A0E14),
+                  padding: const EdgeInsets.symmetric(vertical: 14),
+                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                ),
+              ),
+            ),
+            const SizedBox(height: 10),
+            // Botón secundario - cerrar
+            SizedBox(
+              width: double.infinity,
+              child: TextButton(
+                onPressed: () => Navigator.pop(ctx),
+                child: Text(
+                  'Elegir otro horario',
+                  style: TextStyle(color: Colors.white.withValues(alpha: 0.5), fontSize: 14),
+                ),
+              ),
             ),
           ],
         ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(ctx),
-            child: const Text('No, gracias'),
-          ),
-          TextButton(
-            onPressed: () async {
-              Navigator.pop(ctx);
-              if (_nameCtrl.text.trim().isEmpty || _phoneCtrl.text.trim().isEmpty) {
-                ScaffoldMessenger.of(context).showSnackBar(
-                  const SnackBar(content: Text('Completá nombre y teléfono primero')),
-                );
-                return;
-              }
-              await WaitlistService.addToWaitlist(
-                fecha: _selectedDate!,
-                hora: _selectedTime!,
-                personas: _selectedGuests!,
-                nombre: _nameCtrl.text.trim(),
-                telefono: _phoneCtrl.text.trim(),
-                email: _emailCtrl.text.trim().isEmpty ? null : _emailCtrl.text.trim(),
-                comentarios: _commentCtrl.text.trim().isEmpty ? null : _commentCtrl.text.trim(),
-              );
-              if (mounted) {
-                Navigator.of(context).pushReplacement(
-                  MaterialPageRoute(
-                    builder: (_) => WaitlistConfirmationScreen(
-                      nombre: _nameCtrl.text.trim(),
-                      fecha: _selectedDate!,
-                      hora: _selectedTime!,
-                      personas: _selectedGuests!,
-                    ),
-                  ),
-                );
-              }
-            },
-            child: const Text('Unirme a la lista', style: TextStyle(color: Colors.amber)),
-          ),
-        ],
       ),
     );
   }
@@ -447,7 +565,16 @@ class _ReservationFlowScreenState extends State<ReservationFlowScreen> {
             selectedTimeSlot: _selectedTime,
             guests: _selectedGuests ?? 2,
             onTimeSlotSelected: (hora) {
-              setState(() => _selectedTime = hora);
+              // Buscar capacidad del slot seleccionado
+              final slot = _timeSlots.firstWhere(
+                (s) => s['hora'] == hora,
+                orElse: () => {'availableCapacity': 0, 'totalCapacity': 0},
+              );
+              setState(() {
+                _selectedTime = hora;
+                _availableCapacity = slot['availableCapacity'] as int? ?? 0;
+                _totalCapacity = slot['totalCapacity'] as int? ?? 0;
+              });
               Future.delayed(const Duration(milliseconds: 300), _next);
             },
           ),
@@ -484,7 +611,19 @@ class _ReservationFlowScreenState extends State<ReservationFlowScreen> {
               ],
             ),
           ),
-          const SizedBox(height: 24),
+          const SizedBox(height: 16),
+
+          // Banner de urgencia si queda poca capacidad
+          if (_selectedTime != null &&
+              _totalCapacity > 0 &&
+              UrgencyBanner.shouldShow(_availableCapacity, _totalCapacity))
+            UrgencyBanner(
+              availableSpots: _availableCapacity,
+              totalCapacity: _totalCapacity,
+              timeSlot: _selectedTime!,
+            ),
+
+          const SizedBox(height: 16),
 
           _inputField('Nombre *', _nameCtrl, Icons.person),
           _inputField('Teléfono *', _phoneCtrl, Icons.phone, keyboardType: TextInputType.phone),

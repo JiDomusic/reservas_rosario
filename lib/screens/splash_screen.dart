@@ -59,14 +59,15 @@ class _SplashScreenState extends State<SplashScreen>
 
     if (!mounted) return;
 
-    final config = AppConfig.instance;
-
-    // Always go to home. Admin accesses dashboard via login button.
+    // Si hay sesión activa de admin, ir al dashboard; si no, al home
+    final isAdmin = SupabaseService.instance.isLoggedIn;
+    final destination = isAdmin
+        ? const AdminDashboardScreen()
+        : const HomeScreen();
 
     Navigator.of(context).pushReplacement(
       PageRouteBuilder(
-        pageBuilder: (context, animation, secondaryAnimation) =>
-            const HomeScreen(),
+        pageBuilder: (context, animation, secondaryAnimation) => destination,
         transitionsBuilder: (context, animation, secondaryAnimation, child) {
           return FadeTransition(opacity: animation, child: child);
         },

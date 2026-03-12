@@ -58,32 +58,32 @@ class TimeSlotWithCross extends StatelessWidget {
 
   Color _getBackgroundColor() {
     if (showCross || !isAvailable) {
-      return Colors.grey.shade200.withValues(alpha: 0.5);
+      return Colors.white.withValues(alpha: 0.03);
     }
     if (isSelected) {
-      return Colors.blue.shade50;
+      return const Color(0xFF64FFDA).withValues(alpha: 0.15);
     }
-    return Colors.white;
+    return Colors.white.withValues(alpha: 0.08);
   }
 
   Color _getBorderColor() {
     if (showCross || !isAvailable) {
-      return Colors.grey.shade300;
+      return Colors.red.withValues(alpha: 0.3);
     }
     if (isSelected) {
-      return Colors.blue;
+      return const Color(0xFF64FFDA);
     }
-    return Colors.grey.shade300;
+    return Colors.white.withValues(alpha: 0.2);
   }
 
   Color _getTextColor() {
     if (showCross || !isAvailable) {
-      return Colors.grey.shade400;
+      return Colors.white.withValues(alpha: 0.25);
     }
     if (isSelected) {
-      return Colors.blue;
+      return const Color(0xFF64FFDA);
     }
-    return Colors.black87;
+    return Colors.white.withValues(alpha: 0.8);
   }
 }
 

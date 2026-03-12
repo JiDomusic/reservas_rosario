@@ -44,3 +44,7 @@ app.*.map.json
 /android/app/profile
 /android/app/release
 .firebase/
+
+# Secrets
+.env
+run_dev.sh

@@ -414,51 +414,39 @@ class SupabaseService {
   // SUPER ADMIN (crear restaurantes)
   // ═══════════════════════════════════════════════════
 
-  static const _supabaseUrl = 'https://gqgxxbiulijhvevmygto.supabase.co';
-  static const _anonKey = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9'
-      '.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImdxZ3h4Yml1bGlqaHZldm15Z3RvIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzE5Njg3NDIsImV4cCI6MjA4NzU0NDc0Mn0'
-      '.FEGy0n17MtVlSSFJ-BBDmDeHFIQNmiaguMv8UGAGPUM';
-
-  /// Crea un usuario auth SIN afectar la sesión actual del super admin.
-  /// Usa la API REST directamente.
+  /// Crea un usuario auth via función PostgreSQL server-side (SECURITY DEFINER).
+  /// No requiere service_role_key — todo corre en el servidor.
   Future<String> createAuthUser(String email, String password) async {
-    final response = await http.post(
-      Uri.parse('$_supabaseUrl/auth/v1/signup'),
-      headers: {
-        'apikey': _anonKey,
-        'Content-Type': 'application/json',
-      },
-      body: jsonEncode({
-        'email': email,
-        'password': password,
-        'email_confirm': true,
-      }),
-    );
-
-    if (response.statusCode != 200) {
-      final body = jsonDecode(response.body);
-      throw Exception(body['msg'] ?? body['error_description'] ?? 'Error al crear usuario');
+    final result = await _client.rpc('create_auth_user', params: {
+      'p_email': email,
+      'p_password': password,
+    });
+    if (result == null) {
+      throw Exception('No se pudo crear el usuario');
     }
-
-    final body = jsonDecode(response.body);
-    final userId = body['id'] as String?;
-    if (userId == null) {
-      throw Exception('No se pudo obtener el ID del usuario creado');
-    }
-    return userId;
+    return result as String;
   }
 
   /// Crea un nuevo tenant (restaurante) con su usuario admin.
+  /// Si falla el INSERT, elimina el usuario auth para no dejar huérfanos.
   Future<void> createRestaurant({
     required String tenantId,
     required String restaurantName,
     required String adminUserId,
   }) async {
-    await _client.from('tenants').insert({
-      'id': tenantId,
-      'nombre_restaurante': restaurantName,
-      'admin_user_id': adminUserId,
-    });
+    try {
+      await _client.from('tenants').insert({
+        'id': tenantId,
+        'nombre_restaurante': restaurantName,
+        'admin_user_id': adminUserId,
+      });
+    } catch (e) {
+      // Limpiar usuario auth huérfano
+      try {
+        await _client.rpc('delete_auth_user', params: {'p_user_id': adminUserId});
+      } catch (_) {}
+      rethrow;
+    }
   }
 
   /// Lista todos los tenants (solo para super admin).
