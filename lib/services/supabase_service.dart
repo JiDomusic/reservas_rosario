@@ -414,17 +414,40 @@ class SupabaseService {
   // SUPER ADMIN (crear restaurantes)
   // ═══════════════════════════════════════════════════
 
-  /// Crea un usuario auth via función PostgreSQL server-side (SECURITY DEFINER).
-  /// No requiere service_role_key — todo corre en el servidor.
+  /// Crea un usuario auth via Admin API de Supabase.
+  /// La service_role_key se pasa via --dart-define=SRK=... al compilar.
   Future<String> createAuthUser(String email, String password) async {
-    final result = await _client.rpc('create_auth_user', params: {
-      'p_email': email,
-      'p_password': password,
-    });
-    if (result == null) {
-      throw Exception('No se pudo crear el usuario');
+    const serviceKey = String.fromEnvironment('SRK');
+    if (serviceKey.isEmpty) {
+      throw Exception('Configuración de servicio no disponible. Contacte al administrador.');
     }
-    return result as String;
+    const url = 'https://gqgxxbiulijhvevmygto.supabase.co/auth/v1/admin/users';
+
+    final response = await http.post(
+      Uri.parse(url),
+      headers: {
+        'apikey': serviceKey,
+        'Authorization': 'Bearer $serviceKey',
+        'Content-Type': 'application/json',
+      },
+      body: jsonEncode({
+        'email': email,
+        'password': password,
+        'email_confirm': true,
+      }),
+    );
+
+    if (response.statusCode != 200) {
+      final body = jsonDecode(response.body);
+      throw Exception(body['msg'] ?? body['message'] ?? 'Error al crear usuario');
+    }
+
+    final body = jsonDecode(response.body);
+    final userId = body['id'] as String?;
+    if (userId == null) {
+      throw Exception('No se pudo obtener el ID del usuario creado');
+    }
+    return userId;
   }
 
   /// Crea un nuevo tenant (restaurante) con su usuario admin.

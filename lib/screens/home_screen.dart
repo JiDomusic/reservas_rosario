@@ -9,6 +9,7 @@ import 'reservation_flow_screen.dart';
 import 'confirm_reservation_screen.dart';
 import '../config/app_config.dart';
 import '../services/local_site_status_service.dart';
+import '../services/supabase_service.dart';
 
 class HomeScreen extends StatefulWidget {
   const HomeScreen({super.key});
@@ -73,9 +74,20 @@ class _HomeScreenState extends State<HomeScreen> {
     return '';
   }
 
+  Future<bool> _verifyPin(String pin) async {
+    try {
+      final result = await SupabaseService.instance.client.rpc(
+        'verify_super_admin_pin',
+        params: {'p_pin': pin},
+      );
+      return result == true;
+    } catch (_) {
+      return false;
+    }
+  }
+
   void _showSuperAdminAuth(BuildContext context) {
     final pinCtrl = TextEditingController();
-    const superAdminPin = '991474';
 
     showDialog(
       context: context,
@@ -104,17 +116,21 @@ class _HomeScreenState extends State<HomeScreen> {
             filled: true,
             fillColor: Colors.white.withValues(alpha: 0.05),
           ),
-          onSubmitted: (value) {
-            if (value == superAdminPin) {
-              Navigator.pop(ctx);
-              Navigator.of(context).push(
-                MaterialPageRoute(builder: (_) => const SuperAdminScreen()),
-              );
+          onSubmitted: (value) async {
+            if (await _verifyPin(value)) {
+              if (ctx.mounted) Navigator.pop(ctx);
+              if (mounted) {
+                Navigator.of(context).push(
+                  MaterialPageRoute(builder: (_) => const SuperAdminScreen()),
+                );
+              }
             } else {
-              ScaffoldMessenger.of(context).showSnackBar(
-                const SnackBar(content: Text('PIN incorrecto'), backgroundColor: Colors.red),
-              );
-              Navigator.pop(ctx);
+              if (mounted) {
+                ScaffoldMessenger.of(context).showSnackBar(
+                  const SnackBar(content: Text('PIN incorrecto'), backgroundColor: Colors.red),
+                );
+              }
+              if (ctx.mounted) Navigator.pop(ctx);
             }
           },
         ),
@@ -124,17 +140,21 @@ class _HomeScreenState extends State<HomeScreen> {
             child: const Text('Cancelar'),
           ),
           ElevatedButton(
-            onPressed: () {
-              if (pinCtrl.text == superAdminPin) {
-                Navigator.pop(ctx);
-                Navigator.of(context).push(
-                  MaterialPageRoute(builder: (_) => const SuperAdminScreen()),
-                );
+            onPressed: () async {
+              if (await _verifyPin(pinCtrl.text)) {
+                if (ctx.mounted) Navigator.pop(ctx);
+                if (mounted) {
+                  Navigator.of(context).push(
+                    MaterialPageRoute(builder: (_) => const SuperAdminScreen()),
+                  );
+                }
               } else {
-                ScaffoldMessenger.of(context).showSnackBar(
-                  const SnackBar(content: Text('PIN incorrecto'), backgroundColor: Colors.red),
-                );
-                Navigator.pop(ctx);
+                if (mounted) {
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    const SnackBar(content: Text('PIN incorrecto'), backgroundColor: Colors.red),
+                  );
+                }
+                if (ctx.mounted) Navigator.pop(ctx);
               }
             },
             style: ElevatedButton.styleFrom(backgroundColor: const Color(0xFF64FFDA)),
