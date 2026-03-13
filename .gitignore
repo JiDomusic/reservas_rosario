@@ -48,3 +48,4 @@ app.*.map.json
 # Secrets
 .env
 run_dev.sh
+build_prod.sh

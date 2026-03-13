@@ -59,11 +59,17 @@ class _SplashScreenState extends State<SplashScreen>
 
     if (!mounted) return;
 
-    // Si hay sesión activa de admin, ir al dashboard; si no, al home
-    final isAdmin = SupabaseService.instance.isLoggedIn;
-    final destination = isAdmin
-        ? const AdminDashboardScreen()
-        : const HomeScreen();
+    // Si hay sesión activa de admin, verificar que pertenezca al tenant actual
+    Widget destination = const HomeScreen();
+    if (SupabaseService.instance.isLoggedIn) {
+      final tenantId = await SupabaseService.instance.getTenantIdForCurrentUser();
+      if (tenantId != null && tenantId == SupabaseService.instance.tenantId) {
+        destination = const AdminDashboardScreen();
+      } else {
+        // Usuario no pertenece a este tenant, cerrar sesión
+        await SupabaseService.instance.signOut();
+      }
+    }
 
     Navigator.of(context).pushReplacement(
       PageRouteBuilder(
