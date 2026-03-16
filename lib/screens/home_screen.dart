@@ -1,5 +1,4 @@
 import 'dart:ui';
-
 import 'package:flutter/material.dart';
 import 'package:flutter/foundation.dart';
 import 'package:url_launcher/url_launcher.dart';
@@ -10,6 +9,7 @@ import 'confirm_reservation_screen.dart';
 import '../config/app_config.dart';
 import '../services/local_site_status_service.dart';
 import '../services/supabase_service.dart';
+import '../widgets/welcome_overlay.dart';
 
 class HomeScreen extends StatefulWidget {
   const HomeScreen({super.key});
@@ -18,9 +18,15 @@ class HomeScreen extends StatefulWidget {
   State<HomeScreen> createState() => _HomeScreenState();
 }
 
-class _HomeScreenState extends State<HomeScreen> {
+class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
   BannerSettings? _bannerSettings;
   bool _bannerLoading = false;
+  late bool _showWelcomeOverlay;
+
+  late AnimationController _floatController;
+  late AnimationController _pulseController;
+  late Animation<double> _floatAnimation;
+  late Animation<double> _pulseAnimation;
 
   bool isWebDesktop(BuildContext context) {
     return kIsWeb && MediaQuery.of(context).size.width > 800;
@@ -33,7 +39,33 @@ class _HomeScreenState extends State<HomeScreen> {
   @override
   void initState() {
     super.initState();
+    // Mostrar overlay de marketing solo en tenant demo (landing pública)
+    final tenantId = SupabaseService.instance.tenantId;
+    _showWelcomeOverlay = (tenantId == 'demo' || tenantId.isEmpty);
     _loadBannerSettings();
+
+    _floatController = AnimationController(
+      duration: const Duration(seconds: 6),
+      vsync: this,
+    )..repeat(reverse: true);
+    _floatAnimation = Tween<double>(begin: -8, end: 8).animate(
+      CurvedAnimation(parent: _floatController, curve: Curves.easeInOut),
+    );
+
+    _pulseController = AnimationController(
+      duration: const Duration(seconds: 3),
+      vsync: this,
+    )..repeat(reverse: true);
+    _pulseAnimation = Tween<double>(begin: 0.7, end: 1.0).animate(
+      CurvedAnimation(parent: _pulseController, curve: Curves.easeInOut),
+    );
+  }
+
+  @override
+  void dispose() {
+    _floatController.dispose();
+    _pulseController.dispose();
+    super.dispose();
   }
 
   Future<void> _loadBannerSettings() async {
@@ -172,22 +204,25 @@ class _HomeScreenState extends State<HomeScreen> {
     return Scaffold(
       body: Stack(
         children: [
-          // Fondo: imagen de red o gradiente como fallback
+          // Fondo: imagen o gradiente
           _buildBackground(config),
-          // Overlay oscuro elegante
+          // Overlay oscuro con gradiente artístico
           Container(
             decoration: BoxDecoration(
-              gradient: LinearGradient(
-                begin: Alignment.topCenter,
-                end: Alignment.bottomCenter,
+              gradient: RadialGradient(
+                center: Alignment.topCenter,
+                radius: 1.8,
                 colors: [
-                  Colors.black.withValues(alpha: 0.3),
-                  Colors.black.withValues(alpha: 0.6),
-                  Colors.black.withValues(alpha: 0.8),
+                  Colors.black.withValues(alpha: 0.15),
+                  Colors.black.withValues(alpha: 0.5),
+                  Colors.black.withValues(alpha: 0.85),
                 ],
+                stops: const [0.0, 0.5, 1.0],
               ),
             ),
           ),
+          // Orbes decorativos flotantes (estilo Dalí - formas orgánicas)
+          ..._buildFloatingOrbs(config),
           // Contenido principal
           SafeArea(
             child: LayoutBuilder(
@@ -195,288 +230,213 @@ class _HomeScreenState extends State<HomeScreen> {
                 bool isMobileView = constraints.maxWidth < 600;
                 bool isSmallMobile = constraints.maxWidth < 400;
                 bool isDesktop = constraints.maxWidth >= 800;
-
-                // Espaciados compactos para que quepa todo sin scroll
-                double topSpacing = isMobileView ? 10 : (isDesktop ? 15 : 12);
-                double logoSpacing = isMobileView ? 20 : (isDesktop ? 25 : 20);
-                double taglineSpacing =
-                    isMobileView ? 22 : (isDesktop ? 32 : 26);
-                double buttonSpacing =
-                    isMobileView ? 22 : (isDesktop ? 32 : 26);
                 final bool showHolidayBanner = _shouldShowHolidayBanner();
-                if (!showHolidayBanner) {
-                  taglineSpacing = isMobileView ? 16 : 20;
-                  buttonSpacing = isMobileView ? 16 : 20;
-                }
-                // Empuje suave: si no hay banner, bajamos el bloque de info para ocupar mas fondo
-                final double infoOffset = showHolidayBanner
-                    ? (isMobileView ? 18 : 24)
-                    : (constraints.maxHeight * 0.18).clamp(48.0, 180.0);
 
                 return Stack(
                   children: [
                     SingleChildScrollView(
-                      padding: EdgeInsets.fromLTRB(
-                        isMobileView ? 16.0 : 20.0,
-                        8.0,
-                        isMobileView ? 16.0 : 20.0,
-                        8.0,
-                      ),
-                      physics: showHolidayBanner
-                          ? const BouncingScrollPhysics()
-                          : const ClampingScrollPhysics(),
-                      child: Column(
-                        mainAxisSize: MainAxisSize.min,
-                        crossAxisAlignment: CrossAxisAlignment.center,
-                        children: [
-                          // Admin button
-                          Row(
-                            mainAxisAlignment: MainAxisAlignment.end,
+                      physics: const BouncingScrollPhysics(),
+                      child: ConstrainedBox(
+                        constraints: BoxConstraints(
+                          minHeight: constraints.maxHeight,
+                        ),
+                        child: Padding(
+                          padding: EdgeInsets.symmetric(
+                            horizontal: isMobileView ? 20.0 : 32.0,
+                          ),
+                          child: Column(
+                            mainAxisAlignment: MainAxisAlignment.center,
                             children: [
-                              GestureDetector(
-                                onLongPress: () => _showSuperAdminAuth(context),
-                                onTap: () => Navigator.of(context).push(
-                                  PageRouteBuilder(
-                                    pageBuilder: (context, animation,
-                                            secondaryAnimation) =>
-                                        const AdminLoginScreen(),
-                                    transitionsBuilder: (context, animation,
-                                        secondaryAnimation, child) {
-                                      return FadeTransition(
-                                        opacity: animation,
-                                        child: SlideTransition(
-                                          position: Tween<Offset>(
-                                            begin: const Offset(1.0, 0.0),
-                                            end: Offset.zero,
-                                          ).animate(CurvedAnimation(
-                                            parent: animation,
-                                            curve: Curves.easeInOut,
-                                          )),
-                                          child: child,
-                                        ),
-                                      );
-                                    },
-                                    transitionDuration:
-                                        const Duration(milliseconds: 600),
-                                  ),
-                                ),
-                                child: Container(
-                                  padding: EdgeInsets.all(12),
-                                  margin: EdgeInsets.all(4),
-                                  decoration: BoxDecoration(
-                                    color: config.accentColor,
-                                    shape: BoxShape.circle,
-                                    border: Border.all(
-                                        color: Colors.white, width: 2.5),
-                                    boxShadow: [
-                                      BoxShadow(
-                                        color: Colors.black
-                                            .withValues(alpha: 0.3),
-                                        blurRadius: 8,
-                                        offset: Offset(0, 4),
+                              SizedBox(height: isMobileView ? 12 : 20),
+
+                              // Admin button - discreto, elegante
+                              Row(
+                                mainAxisAlignment: MainAxisAlignment.end,
+                                children: [
+                                  GestureDetector(
+                                    onLongPress: () => _showSuperAdminAuth(context),
+                                    onTap: () => Navigator.of(context).push(
+                                      PageRouteBuilder(
+                                        pageBuilder: (context, animation,
+                                                secondaryAnimation) =>
+                                            const AdminLoginScreen(),
+                                        transitionsBuilder: (context, animation,
+                                            secondaryAnimation, child) {
+                                          return FadeTransition(
+                                            opacity: animation,
+                                            child: SlideTransition(
+                                              position: Tween<Offset>(
+                                                begin: const Offset(1.0, 0.0),
+                                                end: Offset.zero,
+                                              ).animate(CurvedAnimation(
+                                                parent: animation,
+                                                curve: Curves.easeInOut,
+                                              )),
+                                              child: child,
+                                            ),
+                                          );
+                                        },
+                                        transitionDuration:
+                                            const Duration(milliseconds: 600),
                                       ),
-                                    ],
+                                    ),
+                                    child: Container(
+                                      padding: const EdgeInsets.all(12),
+                                      margin: const EdgeInsets.all(4),
+                                      decoration: BoxDecoration(
+                                        color: config.accentColor,
+                                        shape: BoxShape.circle,
+                                        border: Border.all(
+                                            color: Colors.white, width: 2.5),
+                                        boxShadow: [
+                                          BoxShadow(
+                                            color: Colors.black
+                                                .withValues(alpha: 0.3),
+                                            blurRadius: 8,
+                                            offset: const Offset(0, 4),
+                                          ),
+                                        ],
+                                      ),
+                                      child: const Icon(Icons.admin_panel_settings,
+                                          color: Colors.white, size: 16),
+                                    ),
                                   ),
-                                  child: Icon(Icons.admin_panel_settings,
-                                      color: Colors.white, size: 16),
-                                ),
+                                ],
                               ),
-                            ],
-                          ),
 
-                          SizedBox(height: topSpacing),
+                              SizedBox(height: isMobileView ? 16 : 24),
 
-                          // Logo del restaurante
-                          Column(
-                            children: [
-                              _buildHeaderLogo(
-                                  config, isMobileView, isSmallMobile, isDesktop),
-                              SizedBox(height: isMobileView ? 8 : 12),
-                              Text(
-                                config.subtitle,
-                                style: TextStyle(
-                                  fontSize: isMobileView
-                                      ? (isSmallMobile ? 10 : 11)
-                                      : 13,
-                                  fontWeight: FontWeight.w400,
-                                  color: Colors.white.withValues(alpha: 0.8),
-                                  letterSpacing: isMobileView ? 2 : 3,
-                                ),
-                              ),
-                            ],
-                          ),
-
-                          SizedBox(height: logoSpacing),
-
-                          // Tagline / Slogan
-                          Text(
-                            config.slogan,
-                            textAlign: TextAlign.center,
-                            style: TextStyle(
-                                fontSize: isMobileView ? 15 : 17,
-                                color: Colors.white.withValues(alpha: 0.9),
-                                height: 1.3),
-                          ),
-
-                          SizedBox(height: taglineSpacing),
-
-                          if (showHolidayBanner) ...[
-                            AnimatedSwitcher(
-                              duration: const Duration(milliseconds: 450),
-                              switchInCurve: Curves.easeOutBack,
-                              switchOutCurve: Curves.easeIn,
-                              child: _buildHolidayBanner(
-                                config,
-                                isMobileView,
-                                isSmallMobile,
-                                key: const ValueKey('holidayBannerInline'),
-                              ),
-                            ),
-                            SizedBox(height: isMobileView ? 18 : 24),
-                          ],
-
-                          // Main button - Responsivo
-                          ConstrainedBox(
-                            constraints: BoxConstraints(
-                              maxWidth: isMobileView ? double.infinity : 380,
-                            ),
-                            child: GestureDetector(
-                              onTap: () => Navigator.of(context).push(
-                                  MaterialPageRoute(
-                                      builder: (_) =>
-                                          const ReservationFlowScreen())),
-                              child: Container(
-                                padding: EdgeInsets.all(isMobileView
-                                    ? (isSmallMobile ? 16 : 20)
-                                    : 24),
-                                decoration: BoxDecoration(
-                                  color: Colors.white.withValues(alpha: 0.1),
-                                  borderRadius: BorderRadius.circular(18),
-                                  border: Border.all(color: Colors.white30),
-                                ),
+                              // Logo con efecto flotante
+                              AnimatedBuilder(
+                                animation: _floatAnimation,
+                                builder: (context, child) {
+                                  return Transform.translate(
+                                    offset: Offset(0, _floatAnimation.value),
+                                    child: child,
+                                  );
+                                },
                                 child: Column(
                                   children: [
-                                    Icon(Icons.restaurant,
-                                        color: config.accentColor,
-                                        size: isMobileView
-                                            ? (isSmallMobile ? 26 : 30)
-                                            : 34),
+                                    _buildHeaderLogo(
+                                        config, isMobileView, isSmallMobile, isDesktop),
                                     SizedBox(height: isMobileView ? 10 : 14),
+                                    // Línea decorativa orgánica bajo el logo
+                                    AnimatedBuilder(
+                                      animation: _pulseAnimation,
+                                      builder: (context, child) {
+                                        return Container(
+                                          width: (isMobileView ? 60.0 : 80.0) *
+                                              _pulseAnimation.value,
+                                          height: 2,
+                                          decoration: BoxDecoration(
+                                            gradient: LinearGradient(
+                                              colors: [
+                                                config.accentColor.withValues(alpha: 0),
+                                                config.accentColor,
+                                                config.accentColor.withValues(alpha: 0),
+                                              ],
+                                            ),
+                                            borderRadius: BorderRadius.circular(1),
+                                          ),
+                                        );
+                                      },
+                                    ),
+                                    const SizedBox(height: 10),
                                     Text(
-                                      'Hacer una reserva',
+                                      config.subtitle,
                                       style: TextStyle(
                                         fontSize: isMobileView
-                                            ? (isSmallMobile ? 17 : 19)
-                                            : 21,
-                                        color: Colors.white,
-                                        fontWeight: FontWeight.w500,
+                                            ? (isSmallMobile ? 10 : 11)
+                                            : 13,
+                                        fontWeight: FontWeight.w300,
+                                        color: Colors.white.withValues(alpha: 0.7),
+                                        letterSpacing: isMobileView ? 3 : 5,
                                       ),
-                                      textAlign: TextAlign.center,
-                                    ),
-                                    SizedBox(height: 6),
-                                    Text(
-                                      'Mesa para ${config.minGuests}-${config.maxGuests} personas',
-                                      style: TextStyle(
-                                          fontSize: isMobileView
-                                              ? (isSmallMobile ? 11 : 13)
-                                              : 15,
-                                          color: Colors.white
-                                              .withValues(alpha: 0.7)),
-                                      textAlign: TextAlign.center,
                                     ),
                                   ],
                                 ),
                               ),
-                            ),
-                          ),
 
-                          const SizedBox(height: 12),
+                              SizedBox(height: isMobileView ? 24 : 36),
 
-                          // Botón "Tengo un código"
-                          ConstrainedBox(
-                            constraints: BoxConstraints(
-                              maxWidth: isMobileView ? double.infinity : 380,
-                            ),
-                            child: GestureDetector(
-                              onTap: () => Navigator.of(context).push(
-                                MaterialPageRoute(
-                                  builder: (_) => const ConfirmReservationScreen(),
-                                ),
-                              ),
-                              child: Container(
+                              // Slogan con estilo editorial
+                              Container(
                                 padding: EdgeInsets.symmetric(
-                                  horizontal: isMobileView ? 16 : 20,
-                                  vertical: isMobileView ? 14 : 16,
+                                  horizontal: isMobileView ? 8 : 24,
                                 ),
-                                decoration: BoxDecoration(
-                                  color: Colors.white.withValues(alpha: 0.06),
-                                  borderRadius: BorderRadius.circular(14),
-                                  border: Border.all(
-                                    color: const Color(0xFF64FFDA).withValues(alpha: 0.3),
+                                child: Text(
+                                  config.slogan,
+                                  textAlign: TextAlign.center,
+                                  style: TextStyle(
+                                    fontSize: isMobileView ? 16 : 19,
+                                    color: Colors.white.withValues(alpha: 0.85),
+                                    height: 1.5,
+                                    fontStyle: FontStyle.italic,
+                                    fontWeight: FontWeight.w300,
+                                    letterSpacing: 0.5,
                                   ),
                                 ),
-                                child: Row(
-                                  mainAxisAlignment: MainAxisAlignment.center,
-                                  children: [
-                                    Icon(Icons.verified_user,
-                                        color: const Color(0xFF64FFDA),
-                                        size: isMobileView ? 18 : 20),
-                                    const SizedBox(width: 10),
-                                    Text(
-                                      'Tengo un código de reserva',
-                                      style: TextStyle(
-                                        fontSize: isMobileView ? 14 : 15,
-                                        color: const Color(0xFF64FFDA),
-                                        fontWeight: FontWeight.w400,
-                                      ),
-                                    ),
-                                  ],
-                                ),
                               ),
-                            ),
-                          ),
 
-                          SizedBox(height: buttonSpacing),
+                              SizedBox(height: isMobileView ? 28 : 40),
 
-                          SizedBox(height: infoOffset),
-
-                          // Info section - RESPONSIVO Y COMPACTO
-                          Container(
-                            padding: EdgeInsets.all(isMobileView ? 16 : 18),
-                            decoration: BoxDecoration(
-                              color: Colors.white.withValues(alpha: 0.08),
-                              borderRadius: BorderRadius.circular(18),
-                              border: Border.all(
-                                color: Colors.white.withValues(alpha: 0.2),
-                                width: 1,
-                              ),
-                            ),
-                            child: Column(
-                              children: [
-                                _buildSimpleInfoRow(
-                                  Icons.location_on_rounded,
-                                  config.address,
-                                  onTap: () => _openMaps(),
+                              if (showHolidayBanner) ...[
+                                AnimatedSwitcher(
+                                  duration: const Duration(milliseconds: 450),
+                                  switchInCurve: Curves.easeOutBack,
+                                  switchOutCurve: Curves.easeIn,
+                                  child: _buildHolidayBanner(
+                                    config,
+                                    isMobileView,
+                                    isSmallMobile,
+                                    key: const ValueKey('holidayBannerInline'),
+                                  ),
                                 ),
-                                SizedBox(height: 10),
-                                _buildSimpleInfoRow(
-                                  Icons.chat_rounded,
-                                  'WhatsApp: ${config.whatsappNumber}',
-                                  onTap: () =>
-                                      _openWhatsApp(config.whatsappNumber),
-                                  color: Colors.green,
-                                ),
-                                SizedBox(height: 10),
-                                _buildSimpleInfoRow(
-                                  Icons.people_rounded,
-                                  'Capacidad: ${config.totalCapacity} personas',
-                                ),
+                                SizedBox(height: isMobileView ? 24 : 32),
                               ],
-                            ),
-                          ),
 
-                          SizedBox(height: showHolidayBanner ? 10 : 0),
-                        ],
+                              // CTA Principal - Botón dramático estilo Dalí
+                              ConstrainedBox(
+                                constraints: BoxConstraints(
+                                  maxWidth: isMobileView ? double.infinity : 420,
+                                ),
+                                child: _buildMainCTA(config, isMobileView, isSmallMobile),
+                              ),
+
+                              const SizedBox(height: 16),
+
+                              // Botón "Tengo un código" - minimalista
+                              ConstrainedBox(
+                                constraints: BoxConstraints(
+                                  maxWidth: isMobileView ? double.infinity : 420,
+                                ),
+                                child: _buildCodeButton(config, isMobileView),
+                              ),
+
+                              SizedBox(height: isMobileView ? 32 : 48),
+
+                              // Info section - tarjetas individuales con personalidad
+                              ConstrainedBox(
+                                constraints: BoxConstraints(
+                                  maxWidth: isMobileView ? double.infinity : 420,
+                                ),
+                                child: _buildInfoSection(config, isMobileView),
+                              ),
+
+                              SizedBox(height: isMobileView ? 16 : 20),
+
+                              // Botón "Suscribite gratis" — marketing
+                              ConstrainedBox(
+                                constraints: BoxConstraints(
+                                  maxWidth: isMobileView ? double.infinity : 420,
+                                ),
+                                child: _buildSubscribeButton(config, isMobileView),
+                              ),
+
+                              SizedBox(height: isMobileView ? 20 : 32),
+                            ],
+                          ),
+                        ),
                       ),
                     ),
                   ],
@@ -484,7 +444,426 @@ class _HomeScreenState extends State<HomeScreen> {
               },
             ),
           ),
+          // Welcome overlay (tipo Netflix) — deja libre el botón admin arriba
+          if (_showWelcomeOverlay)
+            Positioned(
+              top: 70,
+              left: 0,
+              right: 0,
+              bottom: 0,
+              child: WelcomeOverlay(
+                onSubscribe: () {
+                  _openProgramacionJJWhatsApp();
+                },
+              ),
+            ),
         ],
+      ),
+    );
+  }
+
+  // Botón de suscripción / contacto Programación JJ
+  Widget _buildSubscribeButton(AppConfig config, bool isMobileView) {
+    return GestureDetector(
+      onTap: () => setState(() => _showWelcomeOverlay = true),
+      child: Container(
+        padding: EdgeInsets.symmetric(
+          horizontal: isMobileView ? 16 : 24,
+          vertical: isMobileView ? 14 : 16,
+        ),
+        decoration: BoxDecoration(
+          gradient: LinearGradient(
+            colors: [
+              config.accentColor.withValues(alpha: 0.08),
+              const Color(0xFF64FFDA).withValues(alpha: 0.05),
+            ],
+          ),
+          borderRadius: BorderRadius.circular(16),
+          border: Border.all(
+            color: config.accentColor.withValues(alpha: 0.2),
+          ),
+        ),
+        child: Row(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            Icon(
+              Icons.rocket_launch_rounded,
+              color: config.accentColor.withValues(alpha: 0.7),
+              size: isMobileView ? 18 : 20,
+            ),
+            const SizedBox(width: 10),
+            Flexible(
+              child: Text(
+                'Tenes un restaurante? Proba gratis 15 dias',
+                style: TextStyle(
+                  fontSize: isMobileView ? 13 : 14,
+                  color: Colors.white.withValues(alpha: 0.6),
+                  fontWeight: FontWeight.w400,
+                ),
+                textAlign: TextAlign.center,
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  void _openProgramacionJJWhatsApp() async {
+    const phone = '543413363551';
+    const msg = 'Hola! Quiero probar el sistema de reservas Reservas-JJ gratis por 15 dias';
+    final url = 'https://wa.me/$phone?text=${Uri.encodeComponent(msg)}';
+    try {
+      await launchUrl(Uri.parse(url), mode: LaunchMode.externalApplication);
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('No se pudo abrir WhatsApp')),
+        );
+      }
+    }
+  }
+
+  void _openReservaJJLink() async {
+    const url = 'https://reserva-jj.web.app/';
+    try {
+      await launchUrl(Uri.parse(url), mode: LaunchMode.externalApplication);
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('No se pudo abrir el enlace')),
+        );
+      }
+    }
+  }
+
+  // Orbes flotantes decorativos - formas orgánicas surrealistas
+  List<Widget> _buildFloatingOrbs(AppConfig config) {
+    return [
+      AnimatedBuilder(
+        animation: _floatAnimation,
+        builder: (context, _) {
+          return Positioned(
+            top: -40 + _floatAnimation.value * 1.5,
+            right: -30,
+            child: Container(
+              width: 180,
+              height: 180,
+              decoration: BoxDecoration(
+                shape: BoxShape.circle,
+                gradient: RadialGradient(
+                  colors: [
+                    config.accentColor.withValues(alpha: 0.12),
+                    config.accentColor.withValues(alpha: 0),
+                  ],
+                ),
+              ),
+            ),
+          );
+        },
+      ),
+      AnimatedBuilder(
+        animation: _floatAnimation,
+        builder: (context, _) {
+          return Positioned(
+            bottom: 80 - _floatAnimation.value * 2,
+            left: -60,
+            child: Container(
+              width: 220,
+              height: 220,
+              decoration: BoxDecoration(
+                shape: BoxShape.circle,
+                gradient: RadialGradient(
+                  colors: [
+                    config.primaryColor.withValues(alpha: 0.15),
+                    config.primaryColor.withValues(alpha: 0),
+                  ],
+                ),
+              ),
+            ),
+          );
+        },
+      ),
+      AnimatedBuilder(
+        animation: _pulseAnimation,
+        builder: (context, _) {
+          return Positioned(
+            top: MediaQuery.of(context).size.height * 0.4,
+            right: -80,
+            child: Opacity(
+              opacity: _pulseAnimation.value * 0.5,
+              child: Container(
+                width: 160,
+                height: 160,
+                decoration: BoxDecoration(
+                  shape: BoxShape.circle,
+                  gradient: RadialGradient(
+                    colors: [
+                      config.accentColor.withValues(alpha: 0.08),
+                      config.accentColor.withValues(alpha: 0),
+                    ],
+                  ),
+                ),
+              ),
+            ),
+          );
+        },
+      ),
+    ];
+  }
+
+  // CTA principal - plato surrealista, invita a la acción
+  Widget _buildMainCTA(AppConfig config, bool isMobileView, bool isSmallMobile) {
+    return GestureDetector(
+      onTap: () => Navigator.of(context).push(
+        MaterialPageRoute(builder: (_) => const ReservationFlowScreen()),
+      ),
+      child: AnimatedBuilder(
+        animation: _pulseAnimation,
+        builder: (context, child) {
+          return Container(
+            decoration: BoxDecoration(
+              borderRadius: BorderRadius.circular(24),
+              boxShadow: [
+                BoxShadow(
+                  color: config.accentColor.withValues(
+                    alpha: 0.15 + (_pulseAnimation.value * 0.1),
+                  ),
+                  blurRadius: 30 + (_pulseAnimation.value * 10),
+                  spreadRadius: -5,
+                  offset: const Offset(0, 8),
+                ),
+              ],
+            ),
+            child: child,
+          );
+        },
+        child: ClipRRect(
+          borderRadius: BorderRadius.circular(24),
+          child: BackdropFilter(
+            filter: ImageFilter.blur(sigmaX: 12, sigmaY: 12),
+            child: Container(
+              padding: EdgeInsets.symmetric(
+                vertical: isMobileView ? (isSmallMobile ? 24 : 28) : 36,
+                horizontal: isMobileView ? 20 : 28,
+              ),
+              decoration: BoxDecoration(
+                gradient: LinearGradient(
+                  begin: Alignment.topLeft,
+                  end: Alignment.bottomRight,
+                  colors: [
+                    Colors.white.withValues(alpha: 0.12),
+                    config.accentColor.withValues(alpha: 0.08),
+                    Colors.white.withValues(alpha: 0.05),
+                  ],
+                ),
+                borderRadius: BorderRadius.circular(24),
+                border: Border.all(
+                  color: config.accentColor.withValues(alpha: 0.3),
+                  width: 1.5,
+                ),
+              ),
+              child: Column(
+                children: [
+                  // Icono en un círculo decorativo
+                  Container(
+                    padding: const EdgeInsets.all(16),
+                    decoration: BoxDecoration(
+                      shape: BoxShape.circle,
+                      color: config.accentColor.withValues(alpha: 0.15),
+                      border: Border.all(
+                        color: config.accentColor.withValues(alpha: 0.4),
+                      ),
+                    ),
+                    child: Icon(
+                      Icons.restaurant_menu_rounded,
+                      color: config.accentColor,
+                      size: isMobileView ? (isSmallMobile ? 28 : 32) : 38,
+                    ),
+                  ),
+                  SizedBox(height: isMobileView ? 16 : 20),
+                  Text(
+                    'Hacer una reserva',
+                    style: TextStyle(
+                      fontSize: isMobileView ? (isSmallMobile ? 19 : 22) : 24,
+                      color: Colors.white,
+                      fontWeight: FontWeight.w600,
+                      letterSpacing: 0.5,
+                    ),
+                    textAlign: TextAlign.center,
+                  ),
+                  const SizedBox(height: 8),
+                  Container(
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 16,
+                      vertical: 6,
+                    ),
+                    decoration: BoxDecoration(
+                      color: config.accentColor.withValues(alpha: 0.12),
+                      borderRadius: BorderRadius.circular(20),
+                    ),
+                    child: Text(
+                      '${config.minGuests}-${config.maxGuests} personas',
+                      style: TextStyle(
+                        fontSize: isMobileView ? (isSmallMobile ? 12 : 13) : 14,
+                        color: config.accentColor.withValues(alpha: 0.9),
+                        fontWeight: FontWeight.w500,
+                        letterSpacing: 1,
+                      ),
+                      textAlign: TextAlign.center,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+
+  // Botón código de reserva - línea limpia, elegante
+  Widget _buildCodeButton(AppConfig config, bool isMobileView) {
+    return GestureDetector(
+      onTap: () => Navigator.of(context).push(
+        MaterialPageRoute(builder: (_) => const ConfirmReservationScreen()),
+      ),
+      child: Container(
+        padding: EdgeInsets.symmetric(
+          horizontal: isMobileView ? 16 : 24,
+          vertical: isMobileView ? 14 : 16,
+        ),
+        decoration: BoxDecoration(
+          borderRadius: BorderRadius.circular(16),
+          border: Border.all(
+            color: Colors.white.withValues(alpha: 0.15),
+          ),
+        ),
+        child: Row(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            Container(
+              padding: const EdgeInsets.all(6),
+              decoration: BoxDecoration(
+                color: config.accentColor.withValues(alpha: 0.12),
+                borderRadius: BorderRadius.circular(8),
+              ),
+              child: Icon(
+                Icons.confirmation_number_outlined,
+                color: config.accentColor.withValues(alpha: 0.8),
+                size: isMobileView ? 16 : 18,
+              ),
+            ),
+            const SizedBox(width: 12),
+            Text(
+              'Tengo un código de reserva',
+              style: TextStyle(
+                fontSize: isMobileView ? 14 : 15,
+                color: Colors.white.withValues(alpha: 0.7),
+                fontWeight: FontWeight.w400,
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  // Info section - tarjetas con personalidad artística
+  Widget _buildInfoSection(AppConfig config, bool isMobileView) {
+    return ClipRRect(
+      borderRadius: BorderRadius.circular(20),
+      child: BackdropFilter(
+        filter: ImageFilter.blur(sigmaX: 8, sigmaY: 8),
+        child: Container(
+          padding: EdgeInsets.all(isMobileView ? 16 : 20),
+          decoration: BoxDecoration(
+            color: Colors.white.withValues(alpha: 0.06),
+            borderRadius: BorderRadius.circular(20),
+            border: Border.all(
+              color: Colors.white.withValues(alpha: 0.1),
+            ),
+          ),
+          child: Column(
+            children: [
+              _buildInfoTile(
+                icon: Icons.location_on_rounded,
+                text: config.address,
+                onTap: _openMaps,
+                accentColor: config.accentColor,
+              ),
+              Padding(
+                padding: const EdgeInsets.symmetric(vertical: 8, horizontal: 12),
+                child: Divider(
+                  color: Colors.white.withValues(alpha: 0.06),
+                  height: 1,
+                ),
+              ),
+              _buildInfoTile(
+                icon: Icons.chat_bubble_rounded,
+                text: 'WhatsApp: ${config.whatsappNumber}',
+                onTap: () => _openWhatsApp(config.whatsappNumber),
+                accentColor: const Color(0xFF25D366),
+              ),
+              Padding(
+                padding: const EdgeInsets.symmetric(vertical: 8, horizontal: 12),
+                child: Divider(
+                  color: Colors.white.withValues(alpha: 0.06),
+                  height: 1,
+                ),
+              ),
+              _buildInfoTile(
+                icon: Icons.groups_rounded,
+                text: 'Capacidad: ${config.totalCapacity} personas',
+                accentColor: Colors.white.withValues(alpha: 0.6),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
+  Widget _buildInfoTile({
+    required IconData icon,
+    required String text,
+    VoidCallback? onTap,
+    required Color accentColor,
+  }) {
+    return GestureDetector(
+      onTap: onTap,
+      child: Padding(
+        padding: const EdgeInsets.symmetric(vertical: 6, horizontal: 4),
+        child: Row(
+          children: [
+            Container(
+              padding: const EdgeInsets.all(8),
+              decoration: BoxDecoration(
+                color: accentColor.withValues(alpha: 0.12),
+                borderRadius: BorderRadius.circular(10),
+              ),
+              child: Icon(icon, color: accentColor, size: 18),
+            ),
+            const SizedBox(width: 14),
+            Expanded(
+              child: Text(
+                text,
+                style: TextStyle(
+                  fontSize: 13,
+                  color: Colors.white.withValues(alpha: 0.85),
+                  fontWeight: FontWeight.w400,
+                  height: 1.3,
+                ),
+              ),
+            ),
+            if (onTap != null)
+              Icon(
+                Icons.arrow_outward_rounded,
+                size: 14,
+                color: accentColor.withValues(alpha: 0.5),
+              ),
+          ],
+        ),
       ),
     );
   }
@@ -677,54 +1056,6 @@ class _HomeScreenState extends State<HomeScreen> {
       return _bannerSettings!.enabled;
     }
     return false;
-  }
-
-  Widget _buildSimpleInfoRow(IconData icon, String text,
-      {VoidCallback? onTap, Color? color}) {
-    return GestureDetector(
-      onTap: onTap,
-      child: Container(
-        padding: EdgeInsets.symmetric(horizontal: 10, vertical: 8),
-        decoration: BoxDecoration(
-          color: color != null
-              ? color.withValues(alpha: 0.1)
-              : Colors.white.withValues(alpha: 0.05),
-          borderRadius: BorderRadius.circular(10),
-          border: Border.all(
-            color: color != null
-                ? color.withValues(alpha: 0.3)
-                : Colors.white.withValues(alpha: 0.15),
-            width: 1,
-          ),
-        ),
-        child: Row(
-          children: [
-            Icon(
-              icon,
-              color: color ?? Colors.white.withValues(alpha: 0.9),
-              size: 18,
-            ),
-            SizedBox(width: 10),
-            Expanded(
-              child: Text(
-                text,
-                style: TextStyle(
-                  fontSize: 13,
-                  color: Colors.white.withValues(alpha: 0.95),
-                  fontWeight: FontWeight.w400,
-                ),
-              ),
-            ),
-            if (onTap != null)
-              Icon(
-                Icons.open_in_new_rounded,
-                size: 14,
-                color: color ?? Colors.white.withValues(alpha: 0.6),
-              ),
-          ],
-        ),
-      ),
-    );
   }
 
   void _openWhatsApp(String phone) async {
