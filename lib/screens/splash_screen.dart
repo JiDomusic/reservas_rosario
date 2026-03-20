@@ -133,41 +133,83 @@ class _SplashScreenState extends State<SplashScreen>
     if (config.onboardingCompleted) return const SizedBox.shrink();
 
     return Padding(
-      padding: const EdgeInsets.only(top: 28.0),
+      padding: const EdgeInsets.only(top: 32.0),
       child: Column(
         mainAxisSize: MainAxisSize.min,
         children: [
           TweenAnimationBuilder<double>(
             tween: Tween(begin: 0, end: 1),
-            duration: const Duration(milliseconds: 800),
+            duration: const Duration(milliseconds: 900),
+            curve: Curves.easeOutBack,
             builder: (context, value, child) {
               return Opacity(
                 opacity: value,
                 child: Transform.translate(
-                  offset: Offset(0, (1 - value) * 12),
-                  child: child,
+                  offset: Offset(0, (1 - value) * 14),
+                  child: Transform.scale(
+                    scale: 0.98 + (value * 0.02),
+                    child: child,
+                  ),
                 ),
               );
             },
             child: Container(
-              padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 12),
+              width: 400,
+              padding: const EdgeInsets.symmetric(horizontal: 22, vertical: 20),
               decoration: BoxDecoration(
-                color: Colors.black.withValues(alpha: 0.5),
-                borderRadius: BorderRadius.circular(12),
-                border: Border.all(color: Colors.white.withValues(alpha: 0.2)),
+                gradient: LinearGradient(
+                  begin: Alignment.topLeft,
+                  end: Alignment.bottomRight,
+                  colors: [
+                    const Color(0xFF1A0B0B).withValues(alpha: 0.9),
+                    const Color(0xFFB32424).withValues(alpha: 0.85),
+                    const Color(0xFFD85C4F).withValues(alpha: 0.8),
+                  ],
+                ),
+                borderRadius: BorderRadius.circular(18),
+                border: Border.all(color: const Color(0xFFFFD7B5).withValues(alpha: 0.5), width: 1.2),
+                boxShadow: [
+                  BoxShadow(
+                    color: Colors.black.withValues(alpha: 0.55),
+                    blurRadius: 28,
+                    offset: const Offset(0, 14),
+                  ),
+                ],
               ),
               child: Column(
+                mainAxisSize: MainAxisSize.min,
                 children: const [
                   Text(
-                    'Tomate 2 minutos para completar tus datos, logo y horarios.',
+                    '🍣 Armá tu marca en 3 minutos',
                     textAlign: TextAlign.center,
-                    style: TextStyle(color: Colors.white, fontSize: 13, fontWeight: FontWeight.w600),
+                    style: TextStyle(
+                      color: Colors.white,
+                      fontSize: 22,
+                      fontWeight: FontWeight.w900,
+                      letterSpacing: 0.8,
+                    ),
                   ),
-                  SizedBox(height: 6),
+                  SizedBox(height: 12),
                   Text(
-                    'Es tu marca: colores, menú y contacto. Todo queda listo para tus clientes.',
+                    'Carga logo, colores, horarios y contacto. Te guiamos paso a paso.',
                     textAlign: TextAlign.center,
-                    style: TextStyle(color: Colors.white70, fontSize: 12, height: 1.3),
+                    style: TextStyle(
+                      color: Colors.white,
+                      fontSize: 15,
+                      height: 1.6,
+                      fontWeight: FontWeight.w700,
+                    ),
+                  ),
+                  SizedBox(height: 10),
+                  Text(
+                    'Cuando termines, este aviso se va y queda tu splash con tu logo.',
+                    textAlign: TextAlign.center,
+                    style: TextStyle(
+                      color: Colors.white70,
+                      fontSize: 14,
+                      height: 1.5,
+                      fontWeight: FontWeight.w600,
+                    ),
                   ),
                 ],
               ),
