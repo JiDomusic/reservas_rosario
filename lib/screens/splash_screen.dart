@@ -55,7 +55,7 @@ class _SplashScreenState extends State<SplashScreen>
   void _startAnimations() async {
     await _fadeController.forward();
     await _scaleController.forward();
-    await Future.delayed(const Duration(milliseconds: 3000));
+    await Future.delayed(const Duration(milliseconds: 3500));
 
     if (!mounted) return;
 
@@ -139,76 +139,78 @@ class _SplashScreenState extends State<SplashScreen>
         children: [
           TweenAnimationBuilder<double>(
             tween: Tween(begin: 0, end: 1),
-            duration: const Duration(milliseconds: 900),
+            duration: const Duration(milliseconds: 1200),
             curve: Curves.easeOutBack,
             builder: (context, value, child) {
               return Opacity(
                 opacity: value,
                 child: Transform.translate(
-                  offset: Offset(0, (1 - value) * 14),
+                  offset: Offset(0, (1 - value) * 16),
                   child: Transform.scale(
-                    scale: 0.98 + (value * 0.02),
+                    scale: 0.96 + (value * 0.04),
                     child: child,
                   ),
                 ),
               );
             },
             child: Container(
-              width: 400,
-              padding: const EdgeInsets.symmetric(horizontal: 22, vertical: 20),
+              width: 440,
+              padding: const EdgeInsets.symmetric(horizontal: 26, vertical: 24),
               decoration: BoxDecoration(
                 gradient: LinearGradient(
                   begin: Alignment.topLeft,
                   end: Alignment.bottomRight,
                   colors: [
-                    const Color(0xFF1A0B0B).withValues(alpha: 0.9),
-                    const Color(0xFFB32424).withValues(alpha: 0.85),
-                    const Color(0xFFD85C4F).withValues(alpha: 0.8),
+                    const Color(0xFF0D0A0A).withValues(alpha: 0.95),
+                    const Color(0xFF8F1A1A).withValues(alpha: 0.9),
+                    const Color(0xFFE36B5C).withValues(alpha: 0.85),
+                    const Color(0xFFFFA07A).withValues(alpha: 0.8),
                   ],
                 ),
-                borderRadius: BorderRadius.circular(18),
-                border: Border.all(color: const Color(0xFFFFD7B5).withValues(alpha: 0.5), width: 1.2),
+                borderRadius: BorderRadius.circular(20),
+                border: Border.all(color: const Color(0xFFFFE1C4).withValues(alpha: 0.65), width: 1.4),
                 boxShadow: [
                   BoxShadow(
-                    color: Colors.black.withValues(alpha: 0.55),
-                    blurRadius: 28,
-                    offset: const Offset(0, 14),
+                    color: Colors.black.withValues(alpha: 0.6),
+                    blurRadius: 32,
+                    offset: const Offset(0, 16),
                   ),
                 ],
               ),
               child: Column(
                 mainAxisSize: MainAxisSize.min,
+                crossAxisAlignment: CrossAxisAlignment.center,
                 children: const [
                   Text(
                     '🍣 Armá tu marca en 3 minutos',
                     textAlign: TextAlign.center,
                     style: TextStyle(
                       color: Colors.white,
-                      fontSize: 22,
+                      fontSize: 24,
                       fontWeight: FontWeight.w900,
-                      letterSpacing: 0.8,
+                      letterSpacing: 1.2,
                     ),
                   ),
-                  SizedBox(height: 12),
+                  SizedBox(height: 14),
                   Text(
                     'Carga logo, colores, horarios y contacto. Te guiamos paso a paso.',
                     textAlign: TextAlign.center,
                     style: TextStyle(
                       color: Colors.white,
-                      fontSize: 15,
-                      height: 1.6,
-                      fontWeight: FontWeight.w700,
+                      fontSize: 17,
+                      height: 1.7,
+                      fontWeight: FontWeight.w800,
                     ),
                   ),
-                  SizedBox(height: 10),
+                  SizedBox(height: 12),
                   Text(
                     'Cuando termines, este aviso se va y queda tu splash con tu logo.',
                     textAlign: TextAlign.center,
                     style: TextStyle(
                       color: Colors.white70,
-                      fontSize: 14,
-                      height: 1.5,
-                      fontWeight: FontWeight.w600,
+                      fontSize: 15,
+                      height: 1.6,
+                      fontWeight: FontWeight.w700,
                     ),
                   ),
                 ],
@@ -232,10 +234,10 @@ class _SplashScreenState extends State<SplashScreen>
               gradient: LinearGradient(
                 begin: Alignment.topLeft,
                 end: Alignment.bottomRight,
-                colors: [
-                  config.primaryColor,
-                  config.secondaryColor,
-                  config.tertiaryColor,
+                colors: const [
+                  Color(0xFF030712),
+                  Color(0xFF0B1B2E),
+                  Color(0xFF0F2740),
                 ],
               ),
             ),
