@@ -2,11 +2,13 @@ import 'dart:math' as math;
 import 'package:flutter/material.dart';
 import '../config/app_config.dart';
 
-// Paleta inspirada en la pantalla Bella Color/Wonoma
-const _primary = Color(0xFFD97FC2);   // rosa/lila principal
-const _secondary = Color(0xFFB18CFF); // lila de apoyo
-const _accent = Color(0xFFB7C2FF);    // lavanda suave
-const _textDark = Color(0xFF1A1A1A);
+// Paleta “sushi”: rojos, ámbar, verde inglés y acentos plateados sobre fondo oscuro
+const _primary = Color(0xFFB31217);   // rojo profundo
+const _secondary = Color(0xFFD68C00); // ámbar oscuro
+const _accent = Color(0xFF0B3B2E);    // verde inglés
+const _silver = Color(0xFFC0C0C0);    // acento plateado
+const _textDark = Color(0xFFE6E6E6);  // texto claro para fondo oscuro
+const _panel = Color(0xFF0F1418);     // carta oscuro
 
 class WelcomeOverlay extends StatefulWidget {
   final VoidCallback onSubscribe;
@@ -89,7 +91,7 @@ class _WelcomeOverlayState extends State<WelcomeOverlay>
     final isMobile = size.width < 600;
 
     // Colores del overlay: fondo blanco, textos oscuros, acentos amarillo y rojo
-    const bgColor = Colors.white;
+    const bgColor = _panel;
     return AnimatedBuilder(
       animation: _fadeAnimation,
       builder: (context, child) {
@@ -104,9 +106,8 @@ class _WelcomeOverlayState extends State<WelcomeOverlay>
             begin: Alignment.topLeft,
             end: Alignment.bottomRight,
             colors: [
-              Color(0xFFF4E7FF),
-              Color(0xFFFCE4F5),
-              Color(0xFFEAD7FF),
+              Color(0xFF050505),
+              Color(0xFF0B1015),
             ],
           ),
         ),
@@ -126,14 +127,15 @@ class _WelcomeOverlayState extends State<WelcomeOverlay>
                 color: bgColor,
                 borderRadius: BorderRadius.circular(28),
                 border: Border.all(
-                  color: _accent,
-                  width: 3,
+                  color: _silver,
+                  width: 2,
                 ),
                 boxShadow: [
                   BoxShadow(
-                    color: _primary.withValues(alpha: 0.25),
+                    color: Colors.black.withValues(alpha: 0.5),
                     blurRadius: 40,
-                    spreadRadius: -10,
+                    spreadRadius: -6,
+                    offset: const Offset(0, 14),
                   ),
                 ],
               ),
@@ -211,10 +213,10 @@ class _WelcomeOverlayState extends State<WelcomeOverlay>
                 colors: [_secondary, _primary],
               ),
               shape: BoxShape.circle,
-              border: Border.all(color: _accent, width: 3),
+              border: Border.all(color: _silver, width: 3),
               boxShadow: [
                 BoxShadow(
-                  color: _primary.withValues(alpha: 0.26),
+                  color: _primary.withValues(alpha: 0.35),
                   blurRadius: 20,
                   spreadRadius: -5,
                 ),
@@ -291,9 +293,9 @@ class _WelcomeOverlayState extends State<WelcomeOverlay>
             borderRadius: BorderRadius.circular(22),
             boxShadow: [
               BoxShadow(
-                color: _primary.withValues(alpha: 0.25),
-                blurRadius: 16,
-                offset: const Offset(0, 6),
+                color: _primary.withValues(alpha: 0.35),
+                blurRadius: 18,
+                offset: const Offset(0, 8),
               ),
             ],
           ),
@@ -313,7 +315,7 @@ class _WelcomeOverlayState extends State<WelcomeOverlay>
           textAlign: TextAlign.center,
           style: TextStyle(
             fontSize: isMobile ? 14 : 16,
-            color: _textDark.withValues(alpha: 0.6),
+            color: _textDark.withValues(alpha: 0.7),
             height: 1.4,
           ),
         ),
@@ -438,22 +440,22 @@ class _WelcomeOverlayState extends State<WelcomeOverlay>
           padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
           decoration: BoxDecoration(
             gradient: const LinearGradient(
-              colors: [_accent, _secondary],
+              colors: [_secondary, _accent],
             ),
             borderRadius: BorderRadius.circular(16),
-            border: Border.all(color: _secondary, width: 2),
+            border: Border.all(color: _silver, width: 1.2),
           ),
           child: Column(
             children: [
               const Icon(Icons.card_giftcard_rounded,
-                  color: _primary, size: 28),
+                  color: _silver, size: 28),
               const SizedBox(height: 8),
               Text(
                 'Gratis por 15 dias',
                 style: TextStyle(
                   fontSize: isMobile ? 18 : 20,
                   fontWeight: FontWeight.w700,
-                  color: _primary,
+                  color: _textDark,
                 ),
               ),
               const SizedBox(height: 4),
@@ -461,7 +463,7 @@ class _WelcomeOverlayState extends State<WelcomeOverlay>
                 'Sin tarjeta, sin compromiso',
                 style: TextStyle(
                   fontSize: isMobile ? 12 : 13,
-                  color: _textDark.withValues(alpha: 0.5),
+                  color: _textDark.withValues(alpha: 0.6),
                 ),
               ),
             ],
@@ -472,7 +474,7 @@ class _WelcomeOverlayState extends State<WelcomeOverlay>
           'Industria Nacional',
           style: TextStyle(
             fontSize: isMobile ? 11 : 12,
-            color: _textDark.withValues(alpha: 0.35),
+            color: _textDark.withValues(alpha: 0.5),
             letterSpacing: 2,
             fontWeight: FontWeight.w500,
           ),
@@ -576,7 +578,7 @@ class _WelcomeOverlayState extends State<WelcomeOverlay>
           gradient: isLastStep
               ? const LinearGradient(colors: [_primary, _secondary])
               : null,
-          color: isLastStep ? null : _accent,
+          color: isLastStep ? null : _accent.withValues(alpha: 0.9),
           borderRadius: BorderRadius.circular(16),
           border: isLastStep
               ? null
@@ -596,7 +598,7 @@ class _WelcomeOverlayState extends State<WelcomeOverlay>
               style: TextStyle(
                 fontSize: isMobile ? 16 : 17,
                 fontWeight: isLastStep ? FontWeight.w700 : FontWeight.w600,
-                color: isLastStep ? Colors.white : const Color(0xFF1A1A1A),
+                color: isLastStep ? Colors.white : _textDark,
                 letterSpacing: 0.5,
               ),
             ),

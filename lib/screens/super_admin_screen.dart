@@ -10,6 +10,7 @@ class SuperAdminScreen extends StatefulWidget {
 }
 
 class _SuperAdminScreenState extends State<SuperAdminScreen> {
+  static const _baseClientUrl = 'https://reserva-jj.web.app';
   List<Map<String, dynamic>> _tenants = [];
   bool _loading = true;
 
@@ -170,7 +171,7 @@ class _SuperAdminScreenState extends State<SuperAdminScreen> {
     required String email,
     required String password,
   }) {
-    final link = 'https://reserva-jj.web.app/?tenant=$tenantId';
+    final link = '$_baseClientUrl/$tenantId';
 
     showDialog(
       context: context,
@@ -356,7 +357,7 @@ class _SuperAdminScreenState extends State<SuperAdminScreen> {
     final id = tenant['id'] as String;
     final name = tenant['nombre_restaurante'] as String? ?? id;
     final onboarded = tenant['onboarding_completed'] as bool? ?? false;
-    final link = 'https://reserva-jj.web.app/?tenant=$id';
+    final link = '$_baseClientUrl/$id';
 
     return Card(
       color: const Color(0xFF1A1E25),

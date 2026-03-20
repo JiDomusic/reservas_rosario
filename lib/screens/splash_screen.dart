@@ -55,7 +55,7 @@ class _SplashScreenState extends State<SplashScreen>
   void _startAnimations() async {
     await _fadeController.forward();
     await _scaleController.forward();
-    await Future.delayed(const Duration(milliseconds: 800));
+    await Future.delayed(const Duration(milliseconds: 3000));
 
     if (!mounted) return;
 
@@ -71,6 +71,7 @@ class _SplashScreenState extends State<SplashScreen>
       }
     }
 
+    // ignore: use_build_context_synchronously
     Navigator.of(context).pushReplacement(
       PageRouteBuilder(
         pageBuilder: (context, animation, secondaryAnimation) => destination,
@@ -115,13 +116,64 @@ class _SplashScreenState extends State<SplashScreen>
   }
 
   Widget _buildFallbackLogo(AppConfig config) {
+    final fallbackText =
+        config.restaurantName.isNotEmpty ? config.restaurantName : 'Aca va tu logo';
     return Text(
-      config.restaurantName,
+      fallbackText,
       style: TextStyle(
         fontSize: 48,
         fontWeight: FontWeight.bold,
         color: config.accentColor,
         letterSpacing: 8,
+      ),
+    );
+  }
+
+  Widget _buildHelperBanner(AppConfig config) {
+    if (config.onboardingCompleted) return const SizedBox.shrink();
+
+    return Padding(
+      padding: const EdgeInsets.only(top: 28.0),
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          TweenAnimationBuilder<double>(
+            tween: Tween(begin: 0, end: 1),
+            duration: const Duration(milliseconds: 800),
+            builder: (context, value, child) {
+              return Opacity(
+                opacity: value,
+                child: Transform.translate(
+                  offset: Offset(0, (1 - value) * 12),
+                  child: child,
+                ),
+              );
+            },
+            child: Container(
+              padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 12),
+              decoration: BoxDecoration(
+                color: Colors.black.withValues(alpha: 0.5),
+                borderRadius: BorderRadius.circular(12),
+                border: Border.all(color: Colors.white.withValues(alpha: 0.2)),
+              ),
+              child: Column(
+                children: const [
+                  Text(
+                    'Tomate 2 minutos para completar tus datos, logo y horarios.',
+                    textAlign: TextAlign.center,
+                    style: TextStyle(color: Colors.white, fontSize: 13, fontWeight: FontWeight.w600),
+                  ),
+                  SizedBox(height: 6),
+                  Text(
+                    'Es tu marca: colores, menú y contacto. Todo queda listo para tus clientes.',
+                    textAlign: TextAlign.center,
+                    style: TextStyle(color: Colors.white70, fontSize: 12, height: 1.3),
+                  ),
+                ],
+              ),
+            ),
+          ),
+        ],
       ),
     );
   }
@@ -230,6 +282,7 @@ class _SplashScreenState extends State<SplashScreen>
                                 letterSpacing: 1,
                               ),
                             ),
+                            _buildHelperBanner(config),
                           ],
                         ),
                       );

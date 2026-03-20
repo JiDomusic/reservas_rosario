@@ -30,12 +30,21 @@ void main() async {
 }
 
 /// Lee el tenant de la URL en Flutter Web.
-/// URL formato: https://dominio.web.app/#/nombre-restaurante
-/// O con query param: https://dominio.web.app/?tenant=nombre-restaurante
+/// URL formatos soportados:
+/// - Path limpio: https://dominio.web.app/nombre-restaurante
+/// - Fragmento:   https://dominio.web.app/#/nombre-restaurante
+/// - Query param: https://dominio.web.app/?tenant=nombre-restaurante
 String? _getTenantFromUrl() {
   if (!kIsWeb) return null;
   try {
     final uri = Uri.base;
+
+    // Intentar path limpio: /jj_rosario
+    final pathTenant = uri.pathSegments.cast<String?>().firstWhere(
+          (seg) => seg != null && seg.isNotEmpty && seg != 'index.html',
+          orElse: () => null,
+        );
+    if (pathTenant != null) return pathTenant;
 
     // Intentar query param: ?tenant=jj_rosario
     final tenantParam = uri.queryParameters['tenant'];
