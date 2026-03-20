@@ -144,8 +144,9 @@ class AppConfig {
       whatsappNumber: config['whatsapp_numero'] ?? '',
       countryCode: config['codigo_pais_telefono'] ?? '54',
       website: config['sitio_web'] ?? '',
-      logoColorUrl: _nullIfEmpty(config['logo_color_url']),
-      logoWhiteUrl: _nullIfEmpty(config['logo_blanco_url']),
+      // Compat: aceptar logo_url / logo_blanco_url si vienen de otros proyectos
+      logoColorUrl: _nullIfEmpty(config['logo_color_url'] ?? config['logo_url']),
+      logoWhiteUrl: _nullIfEmpty(config['logo_blanco_url'] ?? config['logo_white_url']),
       backgroundUrl: _nullIfEmpty(config['fondo_url']),
       primaryColor: _parseColor(config['color_primario'], 0xFF194485),
       secondaryColor: _parseColor(config['color_secundario'], 0xFF154080),
@@ -193,8 +194,11 @@ class AppConfig {
       'whatsapp_numero': whatsappNumber,
       'codigo_pais_telefono': countryCode,
       'sitio_web': website,
+      // Guardar en ambos nombres para compatibilidad (logo_color_url y logo_url)
       'logo_color_url': logoColorUrl ?? '',
+      'logo_url': logoColorUrl ?? '',
       'logo_blanco_url': logoWhiteUrl ?? '',
+      'logo_white_url': logoWhiteUrl ?? '',
       'fondo_url': backgroundUrl ?? '',
       'color_primario': _colorToHex(primaryColor),
       'color_secundario': _colorToHex(secondaryColor),
