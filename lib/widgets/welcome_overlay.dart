@@ -1,7 +1,12 @@
-import 'dart:ui';
 import 'dart:math' as math;
 import 'package:flutter/material.dart';
 import '../config/app_config.dart';
+
+// Paleta inspirada en la pantalla Bella Color/Wonoma
+const _primary = Color(0xFFD97FC2);   // rosa/lila principal
+const _secondary = Color(0xFFB18CFF); // lila de apoyo
+const _accent = Color(0xFFB7C2FF);    // lavanda suave
+const _textDark = Color(0xFF1A1A1A);
 
 class WelcomeOverlay extends StatefulWidget {
   final VoidCallback onSubscribe;
@@ -85,10 +90,6 @@ class _WelcomeOverlayState extends State<WelcomeOverlay>
 
     // Colores del overlay: fondo blanco, textos oscuros, acentos amarillo y rojo
     const bgColor = Colors.white;
-    const cardRed = Color(0xFFE53935);
-    const cardYellow = Color(0xFFFFD600);
-    const textDark = Color(0xFF1A1A1A);
-
     return AnimatedBuilder(
       animation: _fadeAnimation,
       builder: (context, child) {
@@ -98,7 +99,17 @@ class _WelcomeOverlayState extends State<WelcomeOverlay>
         );
       },
       child: Container(
-        color: Colors.black.withValues(alpha: 0.5),
+        decoration: const BoxDecoration(
+          gradient: LinearGradient(
+            begin: Alignment.topLeft,
+            end: Alignment.bottomRight,
+            colors: [
+              Color(0xFFF4E7FF),
+              Color(0xFFFCE4F5),
+              Color(0xFFEAD7FF),
+            ],
+          ),
+        ),
         child: Center(
           child: AnimatedBuilder(
             animation: _scaleAnimation,
@@ -115,12 +126,12 @@ class _WelcomeOverlayState extends State<WelcomeOverlay>
                 color: bgColor,
                 borderRadius: BorderRadius.circular(28),
                 border: Border.all(
-                  color: cardYellow,
+                  color: _accent,
                   width: 3,
                 ),
                 boxShadow: [
                   BoxShadow(
-                    color: cardRed.withValues(alpha: 0.25),
+                    color: _primary.withValues(alpha: 0.25),
                     blurRadius: 40,
                     spreadRadius: -10,
                   ),
@@ -178,10 +189,6 @@ class _WelcomeOverlayState extends State<WelcomeOverlay>
 
   // Paso 0: Bienvenida
   Widget _buildWelcomeStep(AppConfig config, bool isMobile) {
-    const cardRed = Color(0xFFE53935);
-    const cardYellow = Color(0xFFFFD600);
-    const textDark = Color(0xFF1A1A1A);
-
     return Column(
       key: const ValueKey('step_welcome'),
       mainAxisAlignment: MainAxisAlignment.center,
@@ -196,27 +203,35 @@ class _WelcomeOverlayState extends State<WelcomeOverlay>
             );
           },
           child: Container(
-            padding: const EdgeInsets.all(20),
+            padding: const EdgeInsets.all(10),
             decoration: BoxDecoration(
               gradient: const LinearGradient(
                 begin: Alignment.topLeft,
                 end: Alignment.bottomRight,
-                colors: [cardYellow, Color(0xFFFFEA00)],
+                colors: [_secondary, _primary],
               ),
               shape: BoxShape.circle,
-              border: Border.all(color: cardRed, width: 3),
+              border: Border.all(color: _accent, width: 3),
               boxShadow: [
                 BoxShadow(
-                  color: cardYellow.withValues(alpha: 0.4),
+                  color: _primary.withValues(alpha: 0.26),
                   blurRadius: 20,
                   spreadRadius: -5,
                 ),
               ],
             ),
-            child: Icon(
-              Icons.restaurant_menu_rounded,
-              color: cardRed,
-              size: isMobile ? 44 : 52,
+            child: ClipOval(
+              child: Image.asset(
+                'assets/images/logo_jj_reserva.jpg',
+                width: isMobile ? 120 : 140,
+                height: isMobile ? 120 : 140,
+                fit: BoxFit.cover,
+                errorBuilder: (context, error, stackTrace) => Icon(
+                  Icons.restaurant_menu_rounded,
+                  color: _primary,
+                  size: isMobile ? 44 : 52,
+                ),
+              ),
             ),
           ),
         ),
@@ -229,7 +244,7 @@ class _WelcomeOverlayState extends State<WelcomeOverlay>
                 return LinearGradient(
                   begin: Alignment(_shimmerAnimation.value - 1, 0),
                   end: Alignment(_shimmerAnimation.value, 0),
-                  colors: const [cardRed, cardYellow, cardRed],
+                  colors: const [_primary, _accent, _primary],
                   stops: const [0.0, 0.5, 1.0],
                 ).createShader(rect);
               },
@@ -237,7 +252,7 @@ class _WelcomeOverlayState extends State<WelcomeOverlay>
             );
           },
           child: Text(
-            'Bienvenido a\nProgramacion JJ',
+            'JJ Reserva',
             textAlign: TextAlign.center,
             style: TextStyle(
               fontSize: isMobile ? 24 : 28,
@@ -248,19 +263,47 @@ class _WelcomeOverlayState extends State<WelcomeOverlay>
           ),
         ),
         const SizedBox(height: 12),
+        Text(
+          'Sistema de reservas para restaurantes',
+          textAlign: TextAlign.center,
+          style: TextStyle(
+            fontSize: isMobile ? 16 : 18,
+            fontWeight: FontWeight.w700,
+            color: _primary,
+            height: 1.2,
+          ),
+        ),
+        const SizedBox(height: 6),
+        Text(
+          'Desarrollado por Programacion JJ en Rosario',
+          textAlign: TextAlign.center,
+          style: TextStyle(
+            fontSize: isMobile ? 12 : 13,
+            fontWeight: FontWeight.w600,
+            color: _secondary,
+          ),
+        ),
+        const SizedBox(height: 16),
         Container(
-          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+          padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 10),
           decoration: BoxDecoration(
-            color: cardRed,
-            borderRadius: BorderRadius.circular(20),
+            color: _primary,
+            borderRadius: BorderRadius.circular(22),
+            boxShadow: [
+              BoxShadow(
+                color: _primary.withValues(alpha: 0.25),
+                blurRadius: 16,
+                offset: const Offset(0, 6),
+              ),
+            ],
           ),
           child: Text(
-            'Sistema Reservas-JJ',
+            'Sistema JJ Reserva',
             style: TextStyle(
-              fontSize: isMobile ? 13 : 15,
+              fontSize: isMobile ? 14 : 16,
               color: Colors.white,
-              fontWeight: FontWeight.w600,
-              letterSpacing: 1,
+              fontWeight: FontWeight.w700,
+              letterSpacing: 0.6,
             ),
           ),
         ),
@@ -270,7 +313,7 @@ class _WelcomeOverlayState extends State<WelcomeOverlay>
           textAlign: TextAlign.center,
           style: TextStyle(
             fontSize: isMobile ? 14 : 16,
-            color: textDark.withValues(alpha: 0.6),
+            color: _textDark.withValues(alpha: 0.6),
             height: 1.4,
           ),
         ),
@@ -280,10 +323,6 @@ class _WelcomeOverlayState extends State<WelcomeOverlay>
 
   // Paso 1: Features
   Widget _buildFeaturesStep(AppConfig config, bool isMobile) {
-    const cardRed = Color(0xFFE53935);
-    const cardYellow = Color(0xFFFFD600);
-    const textDark = Color(0xFF1A1A1A);
-
     return Column(
       key: const ValueKey('step_features'),
       mainAxisAlignment: MainAxisAlignment.center,
@@ -293,7 +332,7 @@ class _WelcomeOverlayState extends State<WelcomeOverlay>
           style: TextStyle(
             fontSize: isMobile ? 22 : 26,
             fontWeight: FontWeight.w700,
-            color: textDark,
+            color: _textDark,
           ),
         ),
         SizedBox(height: isMobile ? 8 : 12),
@@ -301,7 +340,7 @@ class _WelcomeOverlayState extends State<WelcomeOverlay>
           'Es super facil de configurar',
           style: TextStyle(
             fontSize: isMobile ? 14 : 16,
-            color: textDark.withValues(alpha: 0.5),
+            color: _textDark.withValues(alpha: 0.5),
             fontStyle: FontStyle.italic,
           ),
         ),
@@ -310,7 +349,7 @@ class _WelcomeOverlayState extends State<WelcomeOverlay>
           icon: Icons.palette_rounded,
           title: 'Colores y marca',
           subtitle: 'Cambia colores, logo y fondo con un toque',
-          accentColor: cardRed,
+          accentColor: _primary,
           isMobile: isMobile,
         ),
         SizedBox(height: isMobile ? 12 : 16),
@@ -318,7 +357,7 @@ class _WelcomeOverlayState extends State<WelcomeOverlay>
           icon: Icons.table_restaurant_rounded,
           title: 'Mesas y areas',
           subtitle: 'Configura tus mesas, turnos y capacidad',
-          accentColor: cardYellow.withValues(alpha: 0.85),
+          accentColor: _secondary,
           isMobile: isMobile,
         ),
         SizedBox(height: isMobile ? 12 : 16),
@@ -334,7 +373,7 @@ class _WelcomeOverlayState extends State<WelcomeOverlay>
           icon: Icons.bar_chart_rounded,
           title: 'Reportes en vivo',
           subtitle: 'Estadisticas, graficos y control total',
-          accentColor: cardRed,
+          accentColor: _primary,
           isMobile: isMobile,
         ),
       ],
@@ -343,10 +382,6 @@ class _WelcomeOverlayState extends State<WelcomeOverlay>
 
   // Paso 2: CTA final
   Widget _buildCtaStep(AppConfig config, bool isMobile) {
-    const cardRed = Color(0xFFE53935);
-    const cardYellow = Color(0xFFFFD600);
-    const textDark = Color(0xFF1A1A1A);
-
     return Column(
       key: const ValueKey('step_cta'),
       mainAxisAlignment: MainAxisAlignment.center,
@@ -363,7 +398,7 @@ class _WelcomeOverlayState extends State<WelcomeOverlay>
                   child: Transform.rotate(
                     angle: -0.3,
                     child: Icon(Icons.restaurant_rounded,
-                        color: cardYellow.withValues(alpha: 0.7),
+                        color: _secondary.withValues(alpha: 0.7),
                         size: 32),
                   ),
                 ),
@@ -371,7 +406,7 @@ class _WelcomeOverlayState extends State<WelcomeOverlay>
                 Transform.translate(
                   offset: Offset(0, -_bounceAnimation.value.abs()),
                   child: const Icon(Icons.local_dining_rounded,
-                      color: cardRed, size: 48),
+                      color: _primary, size: 48),
                 ),
                 const SizedBox(width: 8),
                 Transform.translate(
@@ -379,7 +414,7 @@ class _WelcomeOverlayState extends State<WelcomeOverlay>
                   child: Transform.rotate(
                     angle: 0.3,
                     child: Icon(Icons.restaurant_rounded,
-                        color: cardYellow.withValues(alpha: 0.7),
+                        color: _secondary.withValues(alpha: 0.7),
                         size: 32),
                   ),
                 ),
@@ -394,7 +429,7 @@ class _WelcomeOverlayState extends State<WelcomeOverlay>
           style: TextStyle(
             fontSize: isMobile ? 24 : 28,
             fontWeight: FontWeight.w800,
-            color: textDark,
+            color: _textDark,
             height: 1.2,
           ),
         ),
@@ -403,22 +438,22 @@ class _WelcomeOverlayState extends State<WelcomeOverlay>
           padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
           decoration: BoxDecoration(
             gradient: const LinearGradient(
-              colors: [Color(0xFFFFF9C4), Color(0xFFFFECB3)],
+              colors: [_accent, _secondary],
             ),
             borderRadius: BorderRadius.circular(16),
-            border: Border.all(color: cardYellow, width: 2),
+            border: Border.all(color: _secondary, width: 2),
           ),
           child: Column(
             children: [
               const Icon(Icons.card_giftcard_rounded,
-                  color: cardRed, size: 28),
+                  color: _primary, size: 28),
               const SizedBox(height: 8),
               Text(
                 'Gratis por 15 dias',
                 style: TextStyle(
                   fontSize: isMobile ? 18 : 20,
                   fontWeight: FontWeight.w700,
-                  color: cardRed,
+                  color: _primary,
                 ),
               ),
               const SizedBox(height: 4),
@@ -426,7 +461,7 @@ class _WelcomeOverlayState extends State<WelcomeOverlay>
                 'Sin tarjeta, sin compromiso',
                 style: TextStyle(
                   fontSize: isMobile ? 12 : 13,
-                  color: textDark.withValues(alpha: 0.5),
+                  color: _textDark.withValues(alpha: 0.5),
                 ),
               ),
             ],
@@ -437,7 +472,7 @@ class _WelcomeOverlayState extends State<WelcomeOverlay>
           'Industria Nacional',
           style: TextStyle(
             fontSize: isMobile ? 11 : 12,
-            color: textDark.withValues(alpha: 0.35),
+            color: _textDark.withValues(alpha: 0.35),
             letterSpacing: 2,
             fontWeight: FontWeight.w500,
           ),
@@ -490,14 +525,14 @@ class _WelcomeOverlayState extends State<WelcomeOverlay>
                 style: TextStyle(
                   fontSize: isMobile ? 14 : 16,
                   fontWeight: FontWeight.w600,
-                  color: const Color(0xFF1A1A1A),
+                  color: _textDark,
                 ),
               ),
               Text(
                 subtitle,
                 style: TextStyle(
                   fontSize: isMobile ? 12 : 13,
-                  color: const Color(0xFF1A1A1A).withValues(alpha: 0.5),
+                  color: _textDark.withValues(alpha: 0.5),
                 ),
               ),
             ],
@@ -508,7 +543,6 @@ class _WelcomeOverlayState extends State<WelcomeOverlay>
   }
 
   Widget _buildStepIndicator(AppConfig config) {
-    const cardRed = Color(0xFFE53935);
     return Row(
       mainAxisAlignment: MainAxisAlignment.center,
       children: List.generate(3, (i) {
@@ -520,8 +554,8 @@ class _WelcomeOverlayState extends State<WelcomeOverlay>
           height: 8,
           decoration: BoxDecoration(
             color: isActive
-                ? cardRed
-                : const Color(0xFF1A1A1A).withValues(alpha: 0.15),
+                ? _primary
+                : _textDark.withValues(alpha: 0.15),
             borderRadius: BorderRadius.circular(4),
           ),
         );
@@ -530,8 +564,6 @@ class _WelcomeOverlayState extends State<WelcomeOverlay>
   }
 
   Widget _buildMainButton(AppConfig config, bool isMobile) {
-    const cardRed = Color(0xFFE53935);
-    const cardYellow = Color(0xFFFFD600);
     final isLastStep = _currentStep == 2;
 
     return GestureDetector(
@@ -542,13 +574,13 @@ class _WelcomeOverlayState extends State<WelcomeOverlay>
         padding: EdgeInsets.symmetric(vertical: isMobile ? 16 : 18),
         decoration: BoxDecoration(
           gradient: isLastStep
-              ? const LinearGradient(colors: [cardRed, Color(0xFFFF5722)])
+              ? const LinearGradient(colors: [_primary, _secondary])
               : null,
-          color: isLastStep ? null : cardYellow,
+          color: isLastStep ? null : _accent,
           borderRadius: BorderRadius.circular(16),
           border: isLastStep
               ? null
-              : Border.all(color: cardRed.withValues(alpha: 0.3)),
+              : Border.all(color: _primary.withValues(alpha: 0.3)),
         ),
         child: Row(
           mainAxisAlignment: MainAxisAlignment.center,
@@ -608,8 +640,7 @@ class _WelcomeOverlayState extends State<WelcomeOverlay>
               angle: (i * 0.5) + (_bounceAnimation.value * 0.02 * rotationOffset),
               child: Icon(
                 icons[i],
-                color: (i.isEven ? const Color(0xFFE53935) : const Color(0xFFFFD600))
-                    .withValues(alpha: opacity),
+                color: (i.isEven ? _primary : _secondary).withValues(alpha: opacity),
                 size: size,
               ),
             ),
