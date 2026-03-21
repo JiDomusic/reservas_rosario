@@ -1,6 +1,9 @@
+import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:flutter/material.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 import '../config/app_config.dart';
 import '../services/supabase_service.dart';
+import '../utils/web_url_helper.dart';
 import 'admin_dashboard_screen.dart';
 
 class AdminLoginScreen extends StatefulWidget {
@@ -16,6 +19,39 @@ class _AdminLoginScreenState extends State<AdminLoginScreen> {
   String _errorMessage = '';
   bool _loading = false;
   bool _obscurePassword = true;
+  bool _rememberEmail = false;
+
+  static const _prefKeyEmail = 'admin_saved_email';
+  static const _prefKeyRemember = 'admin_remember_email';
+
+  @override
+  void initState() {
+    super.initState();
+    _loadSavedEmail();
+  }
+
+  Future<void> _loadSavedEmail() async {
+    final prefs = await SharedPreferences.getInstance();
+    final saved = prefs.getString(_prefKeyEmail) ?? '';
+    final remember = prefs.getBool(_prefKeyRemember) ?? false;
+    if (remember && saved.isNotEmpty && mounted) {
+      setState(() {
+        _emailCtrl.text = saved;
+        _rememberEmail = true;
+      });
+    }
+  }
+
+  Future<void> _saveEmail(String email) async {
+    final prefs = await SharedPreferences.getInstance();
+    if (_rememberEmail) {
+      await prefs.setString(_prefKeyEmail, email);
+      await prefs.setBool(_prefKeyRemember, true);
+    } else {
+      await prefs.remove(_prefKeyEmail);
+      await prefs.setBool(_prefKeyRemember, false);
+    }
+  }
 
   @override
   void dispose() {
@@ -54,8 +90,10 @@ class _AdminLoginScreenState extends State<AdminLoginScreen> {
         return;
       }
 
-      // Setear el tenant y recargar config
+      // Setear el tenant, actualizar URL del browser y recargar config
       SupabaseService.instance.setTenantId(tenantId);
+      if (kIsWeb) updateBrowserUrl(tenantId);
+      await _saveEmail(email);
       await AppConfig.reload();
 
       if (mounted) {
@@ -215,6 +253,26 @@ class _AdminLoginScreenState extends State<AdminLoginScreen> {
                       filled: true,
                       fillColor: Colors.white.withValues(alpha: 0.05),
                     ),
+                  ),
+
+                  // Recordar email
+                  Row(
+                    children: [
+                      Checkbox(
+                        value: _rememberEmail,
+                        onChanged: (v) => setState(() => _rememberEmail = v ?? false),
+                        activeColor: const Color(0xFF64FFDA),
+                        checkColor: const Color(0xFF0A0E14),
+                        side: BorderSide(color: Colors.white.withValues(alpha: 0.4)),
+                      ),
+                      GestureDetector(
+                        onTap: () => setState(() => _rememberEmail = !_rememberEmail),
+                        child: Text(
+                          'Recordar email',
+                          style: TextStyle(color: Colors.white.withValues(alpha: 0.7), fontSize: 13),
+                        ),
+                      ),
+                    ],
                   ),
 
                   // Forgot password

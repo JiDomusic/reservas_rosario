@@ -4,6 +4,7 @@ import 'home_screen.dart';
 import 'admin_dashboard_screen.dart';
 import '../config/app_config.dart';
 import '../services/supabase_service.dart';
+import '../utils/web_url_helper.dart';
 
 class SplashScreen extends StatefulWidget {
   const SplashScreen({super.key});
@@ -64,6 +65,12 @@ class _SplashScreenState extends State<SplashScreen>
     if (SupabaseService.instance.isLoggedIn) {
       final tenantId = await SupabaseService.instance.getTenantIdForCurrentUser();
       if (tenantId != null && tenantId == SupabaseService.instance.tenantId) {
+        destination = const AdminDashboardScreen();
+      } else if (tenantId != null && SupabaseService.instance.tenantId == 'demo') {
+        // Admin logueado sin tenant en URL → cargar su tenant
+        SupabaseService.instance.setTenantId(tenantId);
+        updateBrowserUrl(tenantId);
+        await AppConfig.reload();
         destination = const AdminDashboardScreen();
       } else {
         // Usuario no pertenece a este tenant, cerrar sesión
@@ -142,12 +149,13 @@ class _SplashScreenState extends State<SplashScreen>
             duration: const Duration(milliseconds: 1200),
             curve: Curves.easeOutBack,
             builder: (context, value, child) {
+              final clamped = value.clamp(0.0, 1.0);
               return Opacity(
-                opacity: value,
+                opacity: clamped,
                 child: Transform.translate(
-                  offset: Offset(0, (1 - value) * 16),
+                  offset: Offset(0, (1 - clamped) * 16),
                   child: Transform.scale(
-                    scale: 0.96 + (value * 0.04),
+                    scale: 0.96 + (clamped * 0.04),
                     child: child,
                   ),
                 ),
@@ -185,10 +193,10 @@ class _SplashScreenState extends State<SplashScreen>
                     '🍣 Armá tu marca en 3 minutos',
                     textAlign: TextAlign.center,
                     style: TextStyle(
-                      color: Colors.white,
+                      color: Color(0xFFFFE8B2), // título dorado/ámbar
                       fontSize: 24,
                       fontWeight: FontWeight.w900,
-                      letterSpacing: 1.2,
+                      letterSpacing: 1.4,
                     ),
                   ),
                   SizedBox(height: 14),
@@ -196,7 +204,7 @@ class _SplashScreenState extends State<SplashScreen>
                     'Carga logo, colores, horarios y contacto. Te guiamos paso a paso.',
                     textAlign: TextAlign.center,
                     style: TextStyle(
-                      color: Colors.white,
+                      color: Color(0xFFFCE6D2),
                       fontSize: 17,
                       height: 1.7,
                       fontWeight: FontWeight.w800,
@@ -207,7 +215,7 @@ class _SplashScreenState extends State<SplashScreen>
                     'Cuando termines, este aviso se va y queda tu splash con tu logo.',
                     textAlign: TextAlign.center,
                     style: TextStyle(
-                      color: Colors.white70,
+                      color: Color(0xFFFAF3EB),
                       fontSize: 15,
                       height: 1.6,
                       fontWeight: FontWeight.w700,

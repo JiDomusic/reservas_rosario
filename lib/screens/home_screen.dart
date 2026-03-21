@@ -10,6 +10,7 @@ import '../config/app_config.dart';
 import '../services/local_site_status_service.dart';
 import '../services/supabase_service.dart';
 import '../widgets/welcome_overlay.dart';
+import '../widgets/trial_expired_overlay.dart';
 
 class HomeScreen extends StatefulWidget {
   const HomeScreen({super.key});
@@ -34,6 +35,13 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
 
   bool isMobile(BuildContext context) {
     return !kIsWeb || MediaQuery.of(context).size.width <= 800;
+  }
+
+  /// Trial expirado solo para tenants reales (no demo)
+  bool get _isTrialExpired {
+    final tenantId = SupabaseService.instance.tenantId;
+    if (tenantId == 'demo' || tenantId.isEmpty) return false;
+    return AppConfig.instance.isTrialExpired;
   }
 
   @override
@@ -346,10 +354,10 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
                                       config.subtitle,
                                       style: TextStyle(
                                         fontSize: isMobileView
-                                            ? (isSmallMobile ? 10 : 11)
-                                            : 13,
+                                            ? (isSmallMobile ? 16 : 18)
+                                            : 22,
                                         fontWeight: FontWeight.w300,
-                                        color: Colors.white.withValues(alpha: 0.7),
+                                        color: Colors.white.withValues(alpha: 0.85),
                                         letterSpacing: isMobileView ? 3 : 5,
                                       ),
                                     ),
@@ -444,6 +452,19 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
               },
             ),
           ),
+          // Trial expirado — bloquea el home del restaurante
+          if (_isTrialExpired && !_showWelcomeOverlay)
+            Positioned(
+              top: 70,
+              left: 0,
+              right: 0,
+              bottom: 0,
+              child: TrialExpiredOverlay(
+                onExtended: () {
+                  setState(() {}); // rebuild con nuevo trial
+                },
+              ),
+            ),
           // Welcome overlay (tipo Netflix) — deja libre el botón admin arriba
           if (_showWelcomeOverlay)
             Positioned(
@@ -904,7 +925,7 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
   Widget _buildHeaderLogo(
       AppConfig config, bool isMobileView, bool isSmallMobile, bool isDesktop) {
     final double logoHeight =
-        isMobileView ? (isSmallMobile ? 70 : 80) : (isDesktop ? 110 : 90);
+        isMobileView ? (isSmallMobile ? 100 : 120) : (isDesktop ? 160 : 140);
 
     if (config.logoWhiteUrl != null) {
       return Image.network(
@@ -924,6 +945,50 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
 
   Widget _buildFallbackLogoText(
       AppConfig config, bool isMobileView, bool isSmallMobile, bool isDesktop) {
+    final isDemo = SupabaseService.instance.tenantId == 'demo' ||
+        SupabaseService.instance.tenantId.isEmpty;
+
+    if (isDemo) {
+      // En demo: mostrar indicación de que acá va el logo del restaurante
+      return Column(
+        children: [
+          Container(
+            padding: EdgeInsets.all(isMobileView ? 16 : 24),
+            decoration: BoxDecoration(
+              border: Border.all(color: Colors.white.withValues(alpha: 0.3), width: 2),
+              borderRadius: BorderRadius.circular(16),
+              color: Colors.white.withValues(alpha: 0.05),
+            ),
+            child: Column(
+              children: [
+                Icon(Icons.add_photo_alternate_outlined,
+                    color: Colors.white.withValues(alpha: 0.5),
+                    size: isMobileView ? 48 : 64),
+                const SizedBox(height: 8),
+                Text(
+                  'Tu logo va acá',
+                  style: TextStyle(
+                    fontSize: isMobileView ? 16 : 20,
+                    fontWeight: FontWeight.w400,
+                    color: Colors.white.withValues(alpha: 0.6),
+                  ),
+                ),
+                const SizedBox(height: 4),
+                Text(
+                  'Subí el logo con el nombre de tu restaurante',
+                  textAlign: TextAlign.center,
+                  style: TextStyle(
+                    fontSize: isMobileView ? 12 : 14,
+                    color: Colors.white.withValues(alpha: 0.4),
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ],
+      );
+    }
+
     return Text(
       config.restaurantName,
       style: TextStyle(

@@ -67,6 +67,10 @@ class AppConfig {
   String? subscriptionStartDate;
   int subscriptionDueDay;
 
+  // Trial
+  DateTime? trialEndDate;
+  bool trialExtended;
+
   AppConfig._({
     required this.restaurantName,
     required this.subtitle,
@@ -109,6 +113,8 @@ class AppConfig {
     required this.onboardingCompleted,
     this.subscriptionStartDate,
     required this.subscriptionDueDay,
+    this.trialEndDate,
+    this.trialExtended = false,
   });
 
   /// Carga toda la configuración desde Supabase
@@ -173,6 +179,8 @@ class AppConfig {
       onboardingCompleted: await storage.getOnboardingCompleted(),
       subscriptionStartDate: _nullIfEmpty(config['subscription_start_date']),
       subscriptionDueDay: int.tryParse(config['subscription_due_day'] ?? '18') ?? 18,
+      trialEndDate: _parseDateTime(config['trial_end_date']),
+      trialExtended: config['trial_extended'] == 'true',
     );
   }
 
@@ -194,11 +202,8 @@ class AppConfig {
       'whatsapp_numero': whatsappNumber,
       'codigo_pais_telefono': countryCode,
       'sitio_web': website,
-      // Guardar en ambos nombres para compatibilidad (logo_color_url y logo_url)
       'logo_color_url': logoColorUrl ?? '',
-      'logo_url': logoColorUrl ?? '',
       'logo_blanco_url': logoWhiteUrl ?? '',
-      'logo_white_url': logoWhiteUrl ?? '',
       'fondo_url': backgroundUrl ?? '',
       'color_primario': _colorToHex(primaryColor),
       'color_secundario': _colorToHex(secondaryColor),
@@ -236,6 +241,15 @@ class AppConfig {
 
   /// Capacidad total sumando todas las áreas
   int get totalCapacity => areas.fold(0, (sum, a) => sum + a.capacidadFrontend);
+
+  /// Días restantes de trial (negativo = expirado)
+  int get trialDaysRemaining {
+    if (trialEndDate == null) return 15;
+    return trialEndDate!.difference(DateTime.now()).inDays;
+  }
+
+  /// True si el trial expiró
+  bool get isTrialExpired => trialDaysRemaining < 0;
 
   /// Busca un área por nombre interno
   AreaConfig? getArea(String nombre) {
@@ -280,6 +294,11 @@ class AppConfig {
 
   static String? _nullIfEmpty(String? s) => (s == null || s.isEmpty) ? null : s;
 
+  static DateTime? _parseDateTime(String? s) {
+    if (s == null || s.isEmpty) return null;
+    return DateTime.tryParse(s);
+  }
+
   static Color _parseColor(String? hex, int defaultColor) {
     if (hex == null || hex.isEmpty) return Color(defaultColor);
     try {
@@ -298,4 +317,5 @@ class AppConfig {
       return [];
     }
   }
+
 }

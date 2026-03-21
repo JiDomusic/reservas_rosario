@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 import '../services/supabase_service.dart';
 
 class SuperAdminScreen extends StatefulWidget {
@@ -123,9 +124,15 @@ class _SuperAdminScreenState extends State<SuperAdminScreen> {
         tenantId: tenantId,
         restaurantName: name,
         adminUserId: userId,
+        adminEmail: email,
       );
 
       if (mounted) Navigator.pop(context); // cerrar progress
+
+      // Guardar credenciales localmente para referencia del super admin
+      final prefs = await SharedPreferences.getInstance();
+      await prefs.setString('sa_cred_email_$tenantId', email);
+      await prefs.setString('sa_cred_pass_$tenantId', password);
 
       // Mostrar resultado con el link
       if (mounted) {
@@ -356,7 +363,13 @@ class _SuperAdminScreenState extends State<SuperAdminScreen> {
   Widget _buildTenantCard(Map<String, dynamic> tenant) {
     final id = tenant['id'] as String;
     final name = tenant['nombre_restaurante'] as String? ?? id;
+    final email = tenant['email_contacto'] as String? ?? '';
     final onboarded = tenant['onboarding_completed'] as bool? ?? false;
+    final trialEndStr = tenant['trial_end_date'] as String?;
+    final trialExtended = tenant['trial_extended'] as bool? ?? false;
+    final trialEnd = trialEndStr != null ? DateTime.tryParse(trialEndStr) : null;
+    final trialDays = trialEnd != null ? trialEnd.difference(DateTime.now()).inDays : 15;
+    final trialExpired = trialDays < 0;
     final link = '$_baseClientUrl/$id';
 
     return Card(
@@ -379,25 +392,71 @@ class _SuperAdminScreenState extends State<SuperAdminScreen> {
                       Text(name, style: const TextStyle(color: Colors.white, fontSize: 16, fontWeight: FontWeight.w600)),
                       const SizedBox(height: 2),
                       Text(id, style: TextStyle(color: Colors.white.withValues(alpha: 0.5), fontSize: 13, fontFamily: 'monospace')),
+                      if (email.isNotEmpty) ...[
+                        const SizedBox(height: 2),
+                        Text(email, style: TextStyle(color: Colors.white.withValues(alpha: 0.4), fontSize: 12)),
+                      ],
                     ],
                   ),
                 ),
-                Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
-                  decoration: BoxDecoration(
-                    color: onboarded
-                        ? const Color(0xFF4CAF50).withValues(alpha: 0.2)
-                        : Colors.orange.withValues(alpha: 0.2),
-                    borderRadius: BorderRadius.circular(12),
-                  ),
-                  child: Text(
-                    onboarded ? 'Activo' : 'Pendiente',
-                    style: TextStyle(
-                      color: onboarded ? const Color(0xFF4CAF50) : Colors.orange,
-                      fontSize: 12,
-                      fontWeight: FontWeight.w600,
+                Column(
+                  crossAxisAlignment: CrossAxisAlignment.end,
+                  children: [
+                    Container(
+                      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                      decoration: BoxDecoration(
+                        color: onboarded
+                            ? const Color(0xFF4CAF50).withValues(alpha: 0.2)
+                            : Colors.orange.withValues(alpha: 0.2),
+                        borderRadius: BorderRadius.circular(12),
+                      ),
+                      child: Text(
+                        onboarded ? 'Activo' : 'Pendiente',
+                        style: TextStyle(
+                          color: onboarded ? const Color(0xFF4CAF50) : Colors.orange,
+                          fontSize: 12,
+                          fontWeight: FontWeight.w600,
+                        ),
+                      ),
                     ),
-                  ),
+                    const SizedBox(height: 6),
+                    Container(
+                      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                      decoration: BoxDecoration(
+                        color: trialExpired
+                            ? Colors.red.withValues(alpha: 0.2)
+                            : trialDays <= 3
+                                ? Colors.orange.withValues(alpha: 0.2)
+                                : const Color(0xFF64FFDA).withValues(alpha: 0.15),
+                        borderRadius: BorderRadius.circular(12),
+                      ),
+                      child: Row(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          Icon(
+                            trialExpired ? Icons.timer_off : Icons.timer_outlined,
+                            size: 12,
+                            color: trialExpired
+                                ? Colors.red
+                                : trialDays <= 3 ? Colors.orange : const Color(0xFF64FFDA),
+                          ),
+                          const SizedBox(width: 4),
+                          Text(
+                            trialExpired
+                                ? 'Expirado${trialExtended ? " (ext)" : ""}'
+                                : '$trialDays días${trialExtended ? " (ext)" : ""}',
+                            style: TextStyle(
+                              color: trialExpired
+                                  ? Colors.red
+                                  : trialDays <= 3 ? Colors.orange : const Color(0xFF64FFDA),
+                              fontSize: 11,
+                              fontWeight: FontWeight.w600,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ],
                 ),
               ],
             ),
@@ -430,9 +489,25 @@ class _SuperAdminScreenState extends State<SuperAdminScreen> {
               ),
             ),
             const SizedBox(height: 8),
+            if (email.isNotEmpty)
+              Padding(
+                padding: const EdgeInsets.only(top: 4, bottom: 4),
+                child: Row(
+                  children: [
+                    Icon(Icons.email_outlined, color: Colors.white.withValues(alpha: 0.4), size: 16),
+                    const SizedBox(width: 6),
+                    Text(email, style: TextStyle(color: Colors.white.withValues(alpha: 0.6), fontSize: 12)),
+                  ],
+                ),
+              ),
             Row(
               mainAxisAlignment: MainAxisAlignment.end,
               children: [
+                TextButton.icon(
+                  onPressed: () => _showCredentials(id, name),
+                  icon: Icon(Icons.key, color: Colors.white.withValues(alpha: 0.6), size: 18),
+                  label: Text('Credenciales', style: TextStyle(color: Colors.white.withValues(alpha: 0.6), fontSize: 13)),
+                ),
                 TextButton.icon(
                   onPressed: () => _deleteRestaurant(id, name),
                   icon: const Icon(Icons.delete_outline, color: Colors.red, size: 18),
@@ -442,6 +517,55 @@ class _SuperAdminScreenState extends State<SuperAdminScreen> {
             ),
           ],
         ),
+      ),
+    );
+  }
+
+  Future<void> _showCredentials(String tenantId, String name) async {
+    final prefs = await SharedPreferences.getInstance();
+    final savedEmail = prefs.getString('sa_cred_email_$tenantId') ?? 'No guardado';
+    final savedPass = prefs.getString('sa_cred_pass_$tenantId') ?? 'No guardado';
+    final link = '$_baseClientUrl/$tenantId';
+
+    if (!mounted) return;
+    showDialog(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        backgroundColor: const Color(0xFF1A1E25),
+        title: Text('Credenciales: $name', style: const TextStyle(color: Colors.white, fontSize: 16)),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            _infoRow('Email', savedEmail),
+            _infoRow('Contraseña', savedPass),
+            _infoRow('Link', link),
+            const SizedBox(height: 12),
+            Text(
+              'La contraseña es la temporal. Si el admin la cambió, esta ya no es válida.',
+              style: TextStyle(color: Colors.white.withValues(alpha: 0.4), fontSize: 11),
+            ),
+          ],
+        ),
+        actions: [
+          TextButton(
+            onPressed: () {
+              final text = 'Restaurante: $name\n'
+                  'Link: $link\n'
+                  'Email: $savedEmail\n'
+                  'Contraseña: $savedPass';
+              Clipboard.setData(ClipboardData(text: text));
+              ScaffoldMessenger.of(ctx).showSnackBar(
+                const SnackBar(content: Text('Credenciales copiadas')),
+              );
+            },
+            child: const Text('Copiar todo'),
+          ),
+          ElevatedButton(
+            onPressed: () => Navigator.pop(ctx),
+            style: ElevatedButton.styleFrom(backgroundColor: const Color(0xFF64FFDA)),
+            child: const Text('Cerrar', style: TextStyle(color: Color(0xFF0A0E14))),
+          ),
+        ],
       ),
     );
   }

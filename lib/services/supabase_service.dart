@@ -19,6 +19,7 @@ class SupabaseService {
   static Future<void> initialize() async {
     await Supabase.initialize(
       url: 'https://gqgxxbiulijhvevmygto.supabase.co',
+      // Usar la anon key (JWT público), no la publishable ni la service_role
       anonKey: 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9'
           '.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImdxZ3h4Yml1bGlqaHZldm15Z3RvIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzE5Njg3NDIsImV4cCI6MjA4NzU0NDc0Mn0'
           '.FEGy0n17MtVlSSFJ-BBDmDeHFIQNmiaguMv8UGAGPUM',
@@ -347,7 +348,9 @@ class SupabaseService {
       bytes,
       fileOptions: const FileOptions(upsert: true),
     );
-    return _client.storage.from('restaurant-images').getPublicUrl(path);
+    // Agregar cache buster para que el browser no muestre la imagen vieja
+    final baseUrl = _client.storage.from('restaurant-images').getPublicUrl(path);
+    return '$baseUrl?v=${DateTime.now().millisecondsSinceEpoch}';
   }
 
   // ═══════════════════════════════════════════════════
@@ -393,6 +396,32 @@ class SupabaseService {
   }
 
   // ═══════════════════════════════════════════════════
+  // TRIAL
+  // ═══════════════════════════════════════════════════
+
+  /// Extiende el trial 5 días más por completar onboarding (total 20 días).
+  /// Solo se puede usar una vez.
+  Future<bool> extendTrialForOnboarding() async {
+    // Leer trial_end_date actual y sumarle 5 días
+    final row = await _client
+        .from('tenants')
+        .select('trial_end_date, trial_extended')
+        .eq('id', _tenantId)
+        .maybeSingle();
+    if (row == null) return false;
+    if (row['trial_extended'] == true) return false; // ya se extendió
+
+    final currentEnd = DateTime.tryParse(row['trial_end_date'] ?? '') ?? DateTime.now();
+    final newEnd = currentEnd.add(const Duration(days: 5)).toIso8601String();
+
+    await _client.from('tenants').update({
+      'trial_end_date': newEnd,
+      'trial_extended': true,
+    }).eq('id', _tenantId);
+    return true;
+  }
+
+  // ═══════════════════════════════════════════════════
   // EXPORT
   // ═══════════════════════════════════════════════════
 
@@ -414,36 +443,24 @@ class SupabaseService {
   // SUPER ADMIN (crear restaurantes)
   // ═══════════════════════════════════════════════════
 
-  /// Crea un usuario auth via Admin API de Supabase.
-  /// La service_role_key se pasa via --dart-define=SRK=... al compilar.
+  /// Crea un usuario auth via Edge Function de Supabase.
+  /// El SRK queda en el servidor, nunca se expone al cliente.
   Future<String> createAuthUser(String email, String password) async {
-    const serviceKey = String.fromEnvironment('SRK');
-    if (serviceKey.isEmpty) {
-      throw Exception('Configuración de servicio no disponible. Contacte al administrador.');
-    }
-    const url = 'https://gqgxxbiulijhvevmygto.supabase.co/auth/v1/admin/users';
-
-    final response = await http.post(
-      Uri.parse(url),
-      headers: {
-        'apikey': serviceKey,
-        'Authorization': 'Bearer $serviceKey',
-        'Content-Type': 'application/json',
-      },
-      body: jsonEncode({
+    final response = await _client.functions.invoke(
+      'create-auth-user',
+      body: {
         'email': email,
         'password': password,
-        'email_confirm': true,
-      }),
+        'pin': '991474',
+      },
     );
 
-    if (response.statusCode != 200) {
-      final body = jsonDecode(response.body);
-      throw Exception(body['msg'] ?? body['message'] ?? 'Error al crear usuario');
+    if (response.status != 200) {
+      final error = response.data?['error'] ?? 'Error al crear usuario';
+      throw Exception(error);
     }
 
-    final body = jsonDecode(response.body);
-    final userId = body['id'] as String?;
+    final userId = response.data?['id'] as String?;
     if (userId == null) {
       throw Exception('No se pudo obtener el ID del usuario creado');
     }
@@ -456,12 +473,14 @@ class SupabaseService {
     required String tenantId,
     required String restaurantName,
     required String adminUserId,
+    String? adminEmail,
   }) async {
     try {
       await _client.from('tenants').insert({
         'id': tenantId,
         'nombre_restaurante': restaurantName,
         'admin_user_id': adminUserId,
+        if (adminEmail != null) 'email_contacto': adminEmail,
       });
     } catch (e) {
       // Limpiar usuario auth huérfano
@@ -476,7 +495,7 @@ class SupabaseService {
   Future<List<Map<String, dynamic>>> getAllTenants() async {
     final result = await _client
         .from('tenants')
-        .select('id, nombre_restaurante, admin_user_id, onboarding_completed, created_at')
+        .select('id, nombre_restaurante, admin_user_id, onboarding_completed, email_contacto, trial_end_date, trial_extended, created_at')
         .order('created_at', ascending: false);
     return List<Map<String, dynamic>>.from(result);
   }

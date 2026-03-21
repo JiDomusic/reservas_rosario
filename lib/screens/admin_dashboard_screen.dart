@@ -18,6 +18,7 @@ import '../services/waitlist_service.dart';
 import '../services/whatsapp_service.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import '../services/supabase_service.dart';
+import '../utils/web_url_helper.dart';
 import 'home_screen.dart';
 import 'reports_tab.dart';
 import 'table_map_screen.dart';
@@ -178,11 +179,16 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen>
           IconButton(
             icon: const Icon(Icons.home, color: Color(0xFF64FFDA)),
             tooltip: 'Ir al inicio',
-            onPressed: () {
-              Navigator.of(context).pushAndRemoveUntil(
-                MaterialPageRoute(builder: (_) => const HomeScreen()),
-                (route) => false,
-              );
+            onPressed: () async {
+              // Recargar config para reflejar cambios del onboarding
+              await AppConfig.reload();
+              updateBrowserUrl(SupabaseService.instance.tenantId);
+              if (mounted) {
+                Navigator.of(context).pushAndRemoveUntil(
+                  MaterialPageRoute(builder: (_) => const HomeScreen()),
+                  (route) => false,
+                );
+              }
             },
           ),
           IconButton(
@@ -207,6 +213,10 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen>
               );
               if (confirm == true && mounted) {
                 await SupabaseService.instance.signOut();
+                // Volver al tenant demo y limpiar URL
+                SupabaseService.instance.setTenantId('demo');
+                await AppConfig.reload();
+                updateBrowserUrl('demo');
                 if (mounted) {
                   Navigator.of(context).pushAndRemoveUntil(
                     MaterialPageRoute(builder: (_) => const HomeScreen()),
@@ -233,15 +243,67 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen>
           ],
         ),
       ),
-      body: TabBarView(
-        controller: _tabController,
-        children: const [
-          _ConfigTab(),
-          _AreasTab(),
-          _HorariosTab(),
-          _OperacionesTab(),
-          ReportsTab(),
-          TableMapScreen(),
+      body: Column(
+        children: [
+          // Banner de trial
+          if (AppConfig.instance.trialEndDate != null)
+            _buildTrialBanner(),
+          Expanded(
+            child: TabBarView(
+              controller: _tabController,
+              children: const [
+                _ConfigTab(),
+                _AreasTab(),
+                _HorariosTab(),
+                _OperacionesTab(),
+                ReportsTab(),
+                TableMapScreen(),
+              ],
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildTrialBanner() {
+    final config = AppConfig.instance;
+    final days = config.trialDaysRemaining;
+    final expired = config.isTrialExpired;
+
+    final Color bgColor;
+    final Color textColor;
+    final IconData icon;
+    final String text;
+
+    if (expired) {
+      bgColor = Colors.red.withValues(alpha: 0.15);
+      textColor = Colors.red;
+      icon = Icons.timer_off;
+      text = 'Tu período de prueba ha finalizado';
+    } else if (days <= 3) {
+      bgColor = Colors.orange.withValues(alpha: 0.15);
+      textColor = Colors.orange;
+      icon = Icons.warning_amber;
+      text = 'Quedan $days día${days == 1 ? "" : "s"} de prueba';
+    } else {
+      bgColor = const Color(0xFF64FFDA).withValues(alpha: 0.1);
+      textColor = const Color(0xFF64FFDA);
+      icon = Icons.timer_outlined;
+      text = '$days días restantes de prueba';
+    }
+
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
+      color: bgColor,
+      child: Row(
+        children: [
+          Icon(icon, color: textColor, size: 18),
+          const SizedBox(width: 8),
+          Expanded(
+            child: Text(text, style: TextStyle(color: textColor, fontSize: 13, fontWeight: FontWeight.w500)),
+          ),
         ],
       ),
     );
@@ -388,7 +450,18 @@ class _ConfigTabState extends State<_ConfigTab> {
     c.onboardingCompleted = true;
 
     try {
+      final wasFirstOnboarding = !AppConfig.instance.trialExtended;
       await c.saveToLocal();
+
+      // Si es la primera vez que completan onboarding, regalar 5 días extra
+      if (wasFirstOnboarding) {
+        final extended = await SupabaseService.instance.extendTrialForOnboarding();
+        if (extended && mounted) {
+          await AppConfig.reload();
+          _showTrialGiftDialog();
+        }
+      }
+
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(
@@ -408,6 +481,69 @@ class _ConfigTabState extends State<_ConfigTab> {
         );
       }
     }
+  }
+
+  void _showTrialGiftDialog() {
+    showDialog(
+      context: context,
+      barrierDismissible: false,
+      builder: (ctx) => AlertDialog(
+        backgroundColor: const Color(0xFF1A1E25),
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Container(
+              padding: const EdgeInsets.all(16),
+              decoration: BoxDecoration(
+                shape: BoxShape.circle,
+                color: const Color(0xFF64FFDA).withValues(alpha: 0.15),
+              ),
+              child: const Icon(Icons.card_giftcard, color: Color(0xFF64FFDA), size: 48),
+            ),
+            const SizedBox(height: 20),
+            const Text(
+              '🎉 ¡Te ganaste 5 días más!',
+              textAlign: TextAlign.center,
+              style: TextStyle(color: Colors.white, fontSize: 22, fontWeight: FontWeight.w700),
+            ),
+            const SizedBox(height: 12),
+            const Text(
+              'Por completar tu onboarding, Programación JJ te regala 5 días extra de prueba.',
+              textAlign: TextAlign.center,
+              style: TextStyle(color: Colors.white70, fontSize: 15, height: 1.5),
+            ),
+            const SizedBox(height: 8),
+            const Text(
+              'En total tenés 20 días para probar el sistema.',
+              textAlign: TextAlign.center,
+              style: TextStyle(color: Color(0xFF64FFDA), fontSize: 16, fontWeight: FontWeight.w600),
+            ),
+            const SizedBox(height: 8),
+            Text(
+              'Nos vamos a contactar para que nos cuentes tu experiencia.',
+              textAlign: TextAlign.center,
+              style: TextStyle(color: Colors.white.withValues(alpha: 0.5), fontSize: 13, fontStyle: FontStyle.italic),
+            ),
+          ],
+        ),
+        actions: [
+          SizedBox(
+            width: double.infinity,
+            child: ElevatedButton(
+              onPressed: () => Navigator.pop(ctx),
+              style: ElevatedButton.styleFrom(
+                backgroundColor: const Color(0xFF64FFDA),
+                foregroundColor: const Color(0xFF0A0E14),
+                padding: const EdgeInsets.symmetric(vertical: 14),
+                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+              ),
+              child: const Text('¡Genial, gracias!', style: TextStyle(fontSize: 16, fontWeight: FontWeight.w600)),
+            ),
+          ),
+        ],
+      ),
+    );
   }
 
   Future<void> _pickColor(String label, Color current, ValueChanged<Color> onPick) async {
@@ -468,8 +604,8 @@ class _ConfigTabState extends State<_ConfigTab> {
 
         const SizedBox(height: 24),
         _sectionTitle('Imágenes'),
-        _imageUploadField('Logo color', _logoColorCtrl, 'logo_color.png'),
-        _imageUploadField('Logo blanco', _logoWhiteCtrl, 'logo_blanco.png'),
+        _imageUploadField('Logo color', _logoColorCtrl, 'logo_color.jpg'),
+        _imageUploadField('Logo blanco', _logoWhiteCtrl, 'logo_blanco.jpg'),
         _imageUploadField('Foto de fondo', _backgroundCtrl, 'fondo.jpg'),
 
         const SizedBox(height: 24),

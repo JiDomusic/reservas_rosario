@@ -2,7 +2,7 @@
 -- 003_rls_policies.sql
 -- Row Level Security policies for multitenant reservation system
 -- ============================================================================
--- Run this in Supabase SQL Editor
+-- EJECUTAR EN: Supabase SQL Editor del proyecto RESERVA-JJ
 -- ============================================================================
 
 -- Enable RLS on all tables
@@ -21,6 +21,8 @@ ALTER TABLE waitlist ENABLE ROW LEVEL SECURITY;
 -- ============================================================================
 DROP POLICY IF EXISTS "tenant_select" ON tenants;
 DROP POLICY IF EXISTS "tenant_update" ON tenants;
+DROP POLICY IF EXISTS "tenant_insert" ON tenants;
+DROP POLICY IF EXISTS "tenant_delete" ON tenants;
 DROP POLICY IF EXISTS "public_select" ON tenants;
 DROP POLICY IF EXISTS "tenant_select" ON areas;
 DROP POLICY IF EXISTS "tenant_insert" ON areas;
@@ -57,13 +59,15 @@ DROP POLICY IF EXISTS "tenant_update" ON waitlist;
 DROP POLICY IF EXISTS "tenant_delete" ON waitlist;
 
 -- ============================================================================
--- TENANTS: admin can read/update own tenant, public can read (for app display)
+-- TENANTS: admin CRUD own, anon read all (datos de vitrina)
 -- ============================================================================
 CREATE POLICY "tenant_select" ON tenants FOR SELECT TO authenticated
   USING (admin_user_id = auth.uid());
 CREATE POLICY "tenant_update" ON tenants FOR UPDATE TO authenticated
   USING (admin_user_id = auth.uid())
   WITH CHECK (admin_user_id = auth.uid());
+CREATE POLICY "tenant_insert" ON tenants FOR INSERT TO anon, authenticated
+  WITH CHECK (true);
 CREATE POLICY "public_select" ON tenants FOR SELECT TO anon
   USING (true);
 
@@ -164,3 +168,41 @@ CREATE POLICY "tenant_update" ON waitlist FOR UPDATE TO authenticated
   USING (tenant_id IN (SELECT id FROM tenants WHERE admin_user_id = auth.uid()));
 CREATE POLICY "tenant_delete" ON waitlist FOR DELETE TO authenticated
   USING (tenant_id IN (SELECT id FROM tenants WHERE admin_user_id = auth.uid()));
+
+-- ============================================================================
+-- FUNCIONES DE SEGURIDAD (como Bella Color)
+-- ============================================================================
+
+-- Tabla de secretos (PIN, etc)
+CREATE TABLE IF NOT EXISTS app_secrets (
+  key TEXT PRIMARY KEY,
+  value TEXT NOT NULL
+);
+
+INSERT INTO app_secrets (key, value) VALUES ('super_admin_pin', '991474')
+ON CONFLICT (key) DO UPDATE SET value = '991474';
+
+ALTER TABLE app_secrets ENABLE ROW LEVEL SECURITY;
+-- Sin policies = nadie puede leer directamente
+
+-- Verificar PIN del super admin (server-side)
+CREATE OR REPLACE FUNCTION verify_super_admin_pin(p_pin TEXT)
+RETURNS BOOLEAN
+LANGUAGE plpgsql
+SECURITY DEFINER
+SET search_path = public
+AS $$
+DECLARE
+  v_pin TEXT;
+BEGIN
+  SELECT value INTO v_pin FROM app_secrets WHERE key = 'super_admin_pin';
+  RETURN v_pin IS NOT NULL AND v_pin = p_pin;
+END;
+$$;
+
+GRANT EXECUTE ON FUNCTION verify_super_admin_pin TO anon;
+GRANT EXECUTE ON FUNCTION verify_super_admin_pin TO authenticated;
+
+-- Recargar schema
+NOTIFY pgrst, 'reload schema';
+SELECT pg_notify('pgrst', 'reload schema');
