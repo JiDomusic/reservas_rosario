@@ -12,10 +12,13 @@ const _panel = Color(0xFF0F1418);     // carta oscuro
 
 class WelcomeOverlay extends StatefulWidget {
   final VoidCallback onSubscribe;
+  /// Si es true, muestra un aviso de que el restaurante se está configurando
+  final bool mostrarAvisoPendiente;
 
   const WelcomeOverlay({
     super.key,
     required this.onSubscribe,
+    this.mostrarAvisoPendiente = false,
   });
 
   @override
@@ -150,7 +153,35 @@ class _WelcomeOverlayState extends State<WelcomeOverlay>
                       padding: EdgeInsets.all(isMobile ? 24 : 32),
                       child: Column(
                         children: [
-                          const SizedBox(height: 8),
+                          if (widget.mostrarAvisoPendiente) ...[
+                            Container(
+                              width: double.infinity,
+                              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+                              decoration: BoxDecoration(
+                                color: _secondary.withValues(alpha: 0.15),
+                                borderRadius: BorderRadius.circular(12),
+                                border: Border.all(color: _secondary.withValues(alpha: 0.4)),
+                              ),
+                              child: Row(
+                                children: [
+                                  Icon(Icons.construction_rounded, color: _secondary, size: 20),
+                                  const SizedBox(width: 10),
+                                  Expanded(
+                                    child: Text(
+                                      'Este restaurante se esta configurando.\nProximamente estara disponible.',
+                                      style: TextStyle(
+                                        fontSize: isMobile ? 12 : 13,
+                                        color: _textDark.withValues(alpha: 0.85),
+                                        fontWeight: FontWeight.w600,
+                                        height: 1.4,
+                                      ),
+                                    ),
+                                  ),
+                                ],
+                              ),
+                            ),
+                            const SizedBox(height: 8),
+                          ],
                           Expanded(
                             child: AnimatedSwitcher(
                               duration: const Duration(milliseconds: 400),

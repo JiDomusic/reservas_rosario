@@ -97,8 +97,23 @@ class _SplashScreenState extends State<SplashScreen>
     super.dispose();
   }
 
+  /// Si el tenant no completó onboarding, mostrar logo genérico de Reservas-JJ
+  bool get _usarGenerico => !AppConfig.instance.onboardingCompleted;
+
   Widget _buildLogo() {
     final config = AppConfig.instance;
+    // Tenant sin onboarding → logo genérico de Reservas-JJ
+    if (_usarGenerico) {
+      return Image.asset(
+        'assets/images/logo_jj_reserva.jpg',
+        height: 180,
+        width: 180,
+        fit: BoxFit.contain,
+        errorBuilder: (context, error, stackTrace) {
+          return _buildFallbackLogo(config);
+        },
+      );
+    }
     if (config.logoColorUrl != null) {
       return Image.network(
         config.logoColorUrl!,
@@ -302,7 +317,7 @@ class _SplashScreenState extends State<SplashScreen>
                         child: Column(
                           children: [
                             Text(
-                              config.subtitle,
+                              _usarGenerico ? 'RESERVAS-JJ' : config.subtitle,
                               style: TextStyle(
                                 fontSize: 16,
                                 fontWeight: FontWeight.w400,
@@ -326,7 +341,7 @@ class _SplashScreenState extends State<SplashScreen>
                             ),
                             const SizedBox(height: 30),
                             Text(
-                              config.slogan,
+                              _usarGenerico ? 'Sistema de reservas para restaurantes' : config.slogan,
                               style: TextStyle(
                                 fontSize: 14,
                                 fontWeight: FontWeight.w300,

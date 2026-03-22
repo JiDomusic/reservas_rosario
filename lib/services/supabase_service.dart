@@ -500,8 +500,16 @@ class SupabaseService {
     return List<Map<String, dynamic>>.from(result);
   }
 
-  /// Elimina un tenant y todos sus datos (cascade).
+  /// Elimina un tenant y todos sus datos relacionados.
   Future<void> deleteRestaurant(String tenantId) async {
+    await _client.from('reservations').delete().eq('tenant_id', tenantId);
+    await _client.from('waitlist').delete().eq('tenant_id', tenantId);
+    await _client.from('blocks').delete().eq('tenant_id', tenantId);
+    await _client.from('table_blocks').delete().eq('tenant_id', tenantId);
+    await _client.from('map_positions').delete().eq('tenant_id', tenantId);
+    await _client.from('operating_hours').delete().eq('tenant_id', tenantId);
+    await _client.from('tables_def').delete().eq('tenant_id', tenantId);
+    await _client.from('areas').delete().eq('tenant_id', tenantId);
     await _client.from('tenants').delete().eq('id', tenantId);
   }
 

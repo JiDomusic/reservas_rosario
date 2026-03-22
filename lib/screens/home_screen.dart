@@ -47,9 +47,9 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
   @override
   void initState() {
     super.initState();
-    // Mostrar overlay de marketing solo en tenant demo (landing pública)
+    // Mostrar overlay: en demo (landing pública) o en tenants sin onboarding
     final tenantId = SupabaseService.instance.tenantId;
-    _showWelcomeOverlay = (tenantId == 'demo' || tenantId.isEmpty);
+    _showWelcomeOverlay = (tenantId == 'demo' || tenantId.isEmpty || !AppConfig.instance.onboardingCompleted);
     _loadBannerSettings();
 
     _floatController = AnimationController(
@@ -242,22 +242,15 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
 
                 return Stack(
                   children: [
-                    SingleChildScrollView(
-                      physics: const BouncingScrollPhysics(),
-                      child: ConstrainedBox(
-                        constraints: BoxConstraints(
-                          minHeight: constraints.maxHeight,
-                        ),
-                        child: Padding(
-                          padding: EdgeInsets.symmetric(
-                            horizontal: isMobileView ? 20.0 : 32.0,
-                          ),
-                          child: Column(
-                            mainAxisAlignment: MainAxisAlignment.center,
-                            children: [
-                              SizedBox(height: isMobileView ? 12 : 20),
+                    Padding(
+                      padding: EdgeInsets.symmetric(
+                        horizontal: isMobileView ? 16.0 : 32.0,
+                      ),
+                      child: Column(
+                        children: [
+                          SizedBox(height: isMobileView ? 4 : 12),
 
-                              // Admin button - discreto, elegante
+                          // Admin button - discreto, elegante
                               Row(
                                 mainAxisAlignment: MainAxisAlignment.end,
                                 children: [
@@ -312,9 +305,9 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
                                 ],
                               ),
 
-                              SizedBox(height: isMobileView ? 16 : 24),
+                          SizedBox(height: isMobileView ? 4 : 12),
 
-                              // Logo con efecto flotante
+                          // Logo con efecto flotante
                               AnimatedBuilder(
                                 animation: _floatAnimation,
                                 builder: (context, child) {
@@ -365,7 +358,7 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
                                 ),
                               ),
 
-                              SizedBox(height: isMobileView ? 24 : 36),
+                              SizedBox(height: isMobileView ? 8 : 16),
 
                               // Slogan con estilo editorial
                               Container(
@@ -386,7 +379,7 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
                                 ),
                               ),
 
-                              SizedBox(height: isMobileView ? 28 : 40),
+                              SizedBox(height: isMobileView ? 12 : 20),
 
                               if (showHolidayBanner) ...[
                                 AnimatedSwitcher(
@@ -411,7 +404,7 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
                                 child: _buildMainCTA(config, isMobileView, isSmallMobile),
                               ),
 
-                              const SizedBox(height: 16),
+                              const SizedBox(height: 10),
 
                               // Botón "Tengo un código" - minimalista
                               ConstrainedBox(
@@ -421,7 +414,7 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
                                 child: _buildCodeButton(config, isMobileView),
                               ),
 
-                              SizedBox(height: isMobileView ? 32 : 48),
+                              SizedBox(height: isMobileView ? 12 : 20),
 
                               // Info section - tarjetas individuales con personalidad
                               ConstrainedBox(
@@ -431,7 +424,7 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
                                 child: _buildInfoSection(config, isMobileView),
                               ),
 
-                              SizedBox(height: isMobileView ? 16 : 20),
+                              SizedBox(height: isMobileView ? 8 : 12),
 
                               // Botón "Suscribite gratis" — marketing
                               ConstrainedBox(
@@ -441,10 +434,8 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
                                 child: _buildSubscribeButton(config, isMobileView),
                               ),
 
-                              SizedBox(height: isMobileView ? 20 : 32),
-                            ],
-                          ),
-                        ),
+                          SizedBox(height: isMobileView ? 8 : 16),
+                        ],
                       ),
                     ),
                   ],
@@ -476,6 +467,9 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
                 onSubscribe: () {
                   _openProgramacionJJWhatsApp();
                 },
+                mostrarAvisoPendiente: SupabaseService.instance.tenantId != 'demo' &&
+                    SupabaseService.instance.tenantId.isNotEmpty &&
+                    !AppConfig.instance.onboardingCompleted,
               ),
             ),
         ],
@@ -665,8 +659,8 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
             filter: ImageFilter.blur(sigmaX: 12, sigmaY: 12),
             child: Container(
               padding: EdgeInsets.symmetric(
-                vertical: isMobileView ? (isSmallMobile ? 24 : 28) : 36,
-                horizontal: isMobileView ? 20 : 28,
+                vertical: isMobileView ? (isSmallMobile ? 16 : 20) : 28,
+                horizontal: isMobileView ? 16 : 24,
               ),
               decoration: BoxDecoration(
                 gradient: LinearGradient(
