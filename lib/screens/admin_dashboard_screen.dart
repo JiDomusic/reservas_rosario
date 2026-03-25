@@ -1904,252 +1904,323 @@ class _OperacionesTabState extends State<_OperacionesTab> {
     return ListView(
       padding: const EdgeInsets.all(16),
       children: [
-        // Auto-release / expired info
-        if (_autoReleased > 0 || _expiredConfirmations > 0)
-          Container(
-            padding: const EdgeInsets.all(12),
-            margin: const EdgeInsets.only(bottom: 12),
-            decoration: BoxDecoration(
-              color: Colors.amber.withValues(alpha: 0.1),
-              borderRadius: BorderRadius.circular(10),
-              border: Border.all(color: Colors.amber.withValues(alpha: 0.3)),
-            ),
-            child: Row(
-              children: [
-                const Icon(Icons.info_outline, color: Colors.amber, size: 18),
-                const SizedBox(width: 8),
-                Expanded(
-                  child: Text(
-                    [
-                      if (_autoReleased > 0) '$_autoReleased reserva(s) marcada(s) no-show (auto-release)',
-                      if (_expiredConfirmations > 0) '$_expiredConfirmations confirmación(es) expirada(s)',
-                    ].join('\n'),
-                    style: const TextStyle(color: Colors.amber, fontSize: 12),
+        // ── RESERVAS ──────────────────────────────────────
+        Container(
+          padding: const EdgeInsets.all(16),
+          decoration: BoxDecoration(
+            color: const Color(0xFF2A2F38),
+            borderRadius: BorderRadius.circular(16),
+          ),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              // Auto-release / expired info
+              if (_autoReleased > 0 || _expiredConfirmations > 0)
+                Container(
+                  padding: const EdgeInsets.all(10),
+                  margin: const EdgeInsets.only(bottom: 12),
+                  decoration: BoxDecoration(
+                    color: Colors.amber.withValues(alpha: 0.1),
+                    borderRadius: BorderRadius.circular(10),
+                    border: Border.all(color: Colors.amber.withValues(alpha: 0.3)),
+                  ),
+                  child: Row(
+                    children: [
+                      const Icon(Icons.info_outline, color: Colors.amber, size: 16),
+                      const SizedBox(width: 8),
+                      Expanded(
+                        child: Text(
+                          [
+                            if (_autoReleased > 0) '$_autoReleased reserva(s) no-show',
+                            if (_expiredConfirmations > 0) '$_expiredConfirmations confirmación(es) expirada(s)',
+                          ].join(' · '),
+                          style: const TextStyle(color: Colors.amber, fontSize: 12),
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+
+              // Título + fecha
+              Row(
+                children: [
+                  const Icon(Icons.event_note, color: Color(0xFF64FFDA), size: 20),
+                  const SizedBox(width: 8),
+                  const Text('Reservas del día', style: TextStyle(color: Colors.white, fontSize: 16, fontWeight: FontWeight.bold)),
+                ],
+              ),
+              const SizedBox(height: 12),
+              Row(
+                children: [
+                  IconButton(
+                    icon: const Icon(Icons.chevron_left, color: Colors.white70, size: 20),
+                    onPressed: () {
+                      _selectedDate = _selectedDate.subtract(const Duration(days: 1));
+                      _loadAll();
+                    },
+                    padding: EdgeInsets.zero,
+                    constraints: const BoxConstraints(),
+                  ),
+                  Expanded(
+                    child: GestureDetector(
+                      onTap: () async {
+                        final picked = await showDatePicker(
+                          context: context,
+                          initialDate: _selectedDate,
+                          firstDate: DateTime.now().subtract(const Duration(days: 30)),
+                          lastDate: DateTime.now().add(const Duration(days: 90)),
+                        );
+                        if (picked != null) {
+                          _selectedDate = picked;
+                          _loadAll();
+                        }
+                      },
+                      child: Container(
+                        padding: const EdgeInsets.symmetric(vertical: 10),
+                        decoration: BoxDecoration(
+                          color: const Color(0xFF363B44),
+                          borderRadius: BorderRadius.circular(10),
+                        ),
+                        child: Text(
+                          '${_selectedDate.day.toString().padLeft(2, '0')}/${_selectedDate.month.toString().padLeft(2, '0')}/${_selectedDate.year}',
+                          textAlign: TextAlign.center,
+                          style: const TextStyle(color: Colors.white, fontSize: 15, fontWeight: FontWeight.w600),
+                        ),
+                      ),
+                    ),
+                  ),
+                  IconButton(
+                    icon: const Icon(Icons.chevron_right, color: Colors.white70, size: 20),
+                    onPressed: () {
+                      _selectedDate = _selectedDate.add(const Duration(days: 1));
+                      _loadAll();
+                    },
+                    padding: EdgeInsets.zero,
+                    constraints: const BoxConstraints(),
+                  ),
+                ],
+              ),
+              const SizedBox(height: 12),
+
+              // Lista de reservas
+              if (_loading)
+                const Padding(
+                  padding: EdgeInsets.all(24),
+                  child: Center(child: CircularProgressIndicator(color: Color(0xFF64FFDA))),
+                )
+              else if (_reservations.isEmpty)
+                Padding(
+                  padding: const EdgeInsets.all(20),
+                  child: Text('No hay reservas para este día',
+                      textAlign: TextAlign.center,
+                      style: TextStyle(color: Colors.white.withValues(alpha: 0.4), fontSize: 14)),
+                )
+              else
+                for (final r in _reservations) _buildReservationCard(r),
+
+              // Reminders
+              if (_reminders.isNotEmpty) ...[
+                const SizedBox(height: 16),
+                Row(
+                  children: [
+                    const Icon(Icons.notifications_active, color: Colors.blue, size: 18),
+                    const SizedBox(width: 8),
+                    const Text('Recordatorios Pendientes', style: TextStyle(color: Colors.white, fontSize: 14, fontWeight: FontWeight.w600)),
+                  ],
+                ),
+                const SizedBox(height: 8),
+                for (final r in _reminders) _buildReminderCard(r),
+              ],
+
+              // Waitlist
+              if (_waitlist.isNotEmpty) ...[
+                const SizedBox(height: 16),
+                Row(
+                  children: [
+                    const Icon(Icons.hourglass_top, color: Colors.orange, size: 18),
+                    const SizedBox(width: 8),
+                    const Text('Lista de Espera', style: TextStyle(color: Colors.white, fontSize: 14, fontWeight: FontWeight.w600)),
+                  ],
+                ),
+                const SizedBox(height: 8),
+                for (final w in _waitlist) _buildWaitlistCard(w),
+              ],
+            ],
+          ),
+        ),
+
+        const SizedBox(height: 24),
+
+        // ── HERRAMIENTAS ──────────────────────────────────
+        Container(
+          padding: const EdgeInsets.all(16),
+          decoration: BoxDecoration(
+            color: const Color(0xFF1E2229),
+            borderRadius: BorderRadius.circular(16),
+            border: Border.all(color: Colors.white.withValues(alpha: 0.06)),
+          ),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Row(
+                children: [
+                  const Icon(Icons.build_outlined, color: Colors.white70, size: 18),
+                  const SizedBox(width: 8),
+                  const Text('Herramientas', style: TextStyle(color: Colors.white, fontSize: 16, fontWeight: FontWeight.bold)),
+                ],
+              ),
+              const SizedBox(height: 16),
+
+              // Bloqueos
+              const Text('Bloqueos', style: TextStyle(color: Colors.white70, fontSize: 13, fontWeight: FontWeight.w600)),
+              const SizedBox(height: 8),
+              Row(
+                children: [
+                  Expanded(
+                    child: ElevatedButton.icon(
+                      onPressed: () async {
+                        await LocalBlockService.blockDay(_selectedDate, reason: 'Bloqueado por admin');
+                        if (mounted) {
+                          ScaffoldMessenger.of(context).showSnackBar(
+                            SnackBar(content: Text('Día ${_selectedDate.day}/${_selectedDate.month} bloqueado')),
+                          );
+                        }
+                      },
+                      icon: const Icon(Icons.block, size: 14),
+                      label: const Text('Bloquear día', style: TextStyle(fontSize: 12)),
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: Colors.red.withValues(alpha: 0.2),
+                        foregroundColor: Colors.red.shade300,
+                        padding: const EdgeInsets.symmetric(vertical: 10),
+                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+                      ),
+                    ),
+                  ),
+                  const SizedBox(width: 8),
+                  Expanded(
+                    child: ElevatedButton.icon(
+                      onPressed: () async {
+                        await LocalBlockService.unblockDay(_selectedDate);
+                        if (mounted) {
+                          ScaffoldMessenger.of(context).showSnackBar(
+                            SnackBar(content: Text('Día ${_selectedDate.day}/${_selectedDate.month} desbloqueado')),
+                          );
+                        }
+                      },
+                      icon: const Icon(Icons.check_circle_outline, size: 14),
+                      label: const Text('Desbloquear', style: TextStyle(fontSize: 12)),
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: Colors.green.withValues(alpha: 0.2),
+                        foregroundColor: Colors.green.shade300,
+                        padding: const EdgeInsets.symmetric(vertical: 10),
+                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+
+              const SizedBox(height: 20),
+              Divider(color: Colors.white.withValues(alpha: 0.08)),
+              const SizedBox(height: 12),
+
+              // Banner
+              const Text('Banner de cierre', style: TextStyle(color: Colors.white70, fontSize: 13, fontWeight: FontWeight.w600)),
+              const SizedBox(height: 8),
+              SwitchListTile(
+                title: const Text('Banner activo', style: TextStyle(color: Colors.white, fontSize: 14)),
+                value: _bannerEnabled,
+                onChanged: (v) => setState(() => _bannerEnabled = v),
+                activeColor: const Color(0xFF64FFDA),
+                contentPadding: EdgeInsets.zero,
+                dense: true,
+              ),
+              if (_bannerEnabled) ...[
+                const SizedBox(height: 8),
+                TextField(
+                  controller: _bannerTextCtrl,
+                  style: const TextStyle(color: Colors.white, fontSize: 14),
+                  maxLines: 2,
+                  decoration: InputDecoration(
+                    labelText: 'Mensaje del banner',
+                    labelStyle: TextStyle(color: Colors.white.withValues(alpha: 0.5), fontSize: 13),
+                    enabledBorder: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(10),
+                      borderSide: BorderSide(color: Colors.white.withValues(alpha: 0.15)),
+                    ),
+                    focusedBorder: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(10),
+                      borderSide: const BorderSide(color: Color(0xFF64FFDA)),
+                    ),
+                    contentPadding: const EdgeInsets.all(12),
+                  ),
+                ),
+                const SizedBox(height: 8),
+                Row(
+                  children: [
+                    Text(
+                      _bannerDate != null
+                          ? 'Reapertura: ${_bannerDate!.day}/${_bannerDate!.month}/${_bannerDate!.year}'
+                          : 'Sin fecha de reapertura',
+                      style: TextStyle(color: Colors.white.withValues(alpha: 0.5), fontSize: 12),
+                    ),
+                    const Spacer(),
+                    TextButton(
+                      onPressed: () async {
+                        final picked = await showDatePicker(
+                          context: context,
+                          initialDate: DateTime.now().add(const Duration(days: 7)),
+                          firstDate: DateTime.now(),
+                          lastDate: DateTime.now().add(const Duration(days: 365)),
+                        );
+                        if (picked != null) setState(() => _bannerDate = picked);
+                      },
+                      child: const Text('Elegir fecha', style: TextStyle(color: Color(0xFF64FFDA), fontSize: 12)),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 8),
+                SizedBox(
+                  width: double.infinity,
+                  child: ElevatedButton.icon(
+                    onPressed: _saveBanner,
+                    icon: const Icon(Icons.save, size: 16),
+                    label: const Text('Guardar Banner', style: TextStyle(fontSize: 13)),
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: const Color(0xFF64FFDA),
+                      foregroundColor: const Color(0xFF0A0E14),
+                      padding: const EdgeInsets.symmetric(vertical: 12),
+                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+                    ),
                   ),
                 ),
               ],
-            ),
-          ),
 
-        // Date picker
-        _sectionTitle('Reservas del día'),
-        Row(
-          children: [
-            IconButton(
-              icon: const Icon(Icons.chevron_left, color: Colors.white),
-              onPressed: () {
-                _selectedDate = _selectedDate.subtract(const Duration(days: 1));
-                _loadAll();
-              },
-            ),
-            Expanded(
-              child: GestureDetector(
-                onTap: () async {
-                  final picked = await showDatePicker(
-                    context: context,
-                    initialDate: _selectedDate,
-                    firstDate: DateTime.now().subtract(const Duration(days: 30)),
-                    lastDate: DateTime.now().add(const Duration(days: 90)),
-                  );
-                  if (picked != null) {
-                    _selectedDate = picked;
-                    _loadAll();
-                  }
-                },
-                child: Container(
-                  padding: const EdgeInsets.symmetric(vertical: 12),
-                  decoration: BoxDecoration(
-                    color: Colors.white.withValues(alpha: 0.08),
-                    borderRadius: BorderRadius.circular(10),
-                  ),
-                  child: Text(
-                    '${_selectedDate.day.toString().padLeft(2, '0')}/${_selectedDate.month.toString().padLeft(2, '0')}/${_selectedDate.year}',
-                    textAlign: TextAlign.center,
-                    style: const TextStyle(color: Colors.white, fontSize: 16, fontWeight: FontWeight.bold),
+              const SizedBox(height: 20),
+              Divider(color: Colors.white.withValues(alpha: 0.08)),
+              const SizedBox(height: 12),
+
+              // Documentación
+              const Text('Documentación', style: TextStyle(color: Colors.white70, fontSize: 13, fontWeight: FontWeight.w600)),
+              const SizedBox(height: 8),
+              SizedBox(
+                width: double.infinity,
+                child: ElevatedButton.icon(
+                  onPressed: () => UserGuidePdfService.generateAndOpen(),
+                  icon: const Icon(Icons.menu_book, size: 16),
+                  label: const Text('Guía de Uso', style: TextStyle(fontSize: 13)),
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: const Color(0xFF64FFDA).withValues(alpha: 0.1),
+                    foregroundColor: const Color(0xFF64FFDA),
+                    padding: const EdgeInsets.symmetric(vertical: 12),
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(10),
+                      side: BorderSide(color: const Color(0xFF64FFDA).withValues(alpha: 0.3)),
+                    ),
                   ),
                 ),
               ),
-            ),
-            IconButton(
-              icon: const Icon(Icons.chevron_right, color: Colors.white),
-              onPressed: () {
-                _selectedDate = _selectedDate.add(const Duration(days: 1));
-                _loadAll();
-              },
-            ),
-          ],
-        ),
-        const SizedBox(height: 12),
-
-        if (_loading)
-          const Center(child: CircularProgressIndicator(color: Color(0xFF64FFDA)))
-        else if (_reservations.isEmpty)
-          Container(
-            padding: const EdgeInsets.all(24),
-            child: Text('No hay reservas para este día',
-                textAlign: TextAlign.center,
-                style: TextStyle(color: Colors.white.withValues(alpha: 0.5))),
-          )
-        else
-          for (final r in _reservations) _buildReservationCard(r),
-
-        // Reminders section
-        if (_reminders.isNotEmpty) ...[
-          const SizedBox(height: 24),
-          _sectionTitle('Recordatorios Pendientes'),
-          for (final r in _reminders) _buildReminderCard(r),
-        ],
-
-        // Waitlist section
-        if (_waitlist.isNotEmpty) ...[
-          const SizedBox(height: 24),
-          _sectionTitle('Lista de Espera'),
-          for (final w in _waitlist) _buildWaitlistCard(w),
-        ],
-
-        const SizedBox(height: 32),
-
-        // Blocks section
-        _sectionTitle('Bloqueos'),
-        Row(
-          children: [
-            Expanded(
-              child: ElevatedButton.icon(
-                onPressed: () async {
-                  await LocalBlockService.blockDay(_selectedDate, reason: 'Bloqueado por admin');
-                  if (mounted) {
-                    ScaffoldMessenger.of(context).showSnackBar(
-                      SnackBar(content: Text('Día ${_selectedDate.day}/${_selectedDate.month} bloqueado')),
-                    );
-                  }
-                },
-                icon: const Icon(Icons.block, size: 16),
-                label: const Text('Bloquear día'),
-                style: ElevatedButton.styleFrom(
-                  backgroundColor: Colors.red.withValues(alpha: 0.3),
-                  foregroundColor: Colors.white,
-                ),
-              ),
-            ),
-            const SizedBox(width: 8),
-            Expanded(
-              child: ElevatedButton.icon(
-                onPressed: () async {
-                  await LocalBlockService.unblockDay(_selectedDate);
-                  if (mounted) {
-                    ScaffoldMessenger.of(context).showSnackBar(
-                      SnackBar(content: Text('Día ${_selectedDate.day}/${_selectedDate.month} desbloqueado')),
-                    );
-                  }
-                },
-                icon: const Icon(Icons.check_circle_outline, size: 16),
-                label: const Text('Desbloquear día'),
-                style: ElevatedButton.styleFrom(
-                  backgroundColor: Colors.green.withValues(alpha: 0.3),
-                  foregroundColor: Colors.white,
-                ),
-              ),
-            ),
-          ],
-        ),
-
-        const SizedBox(height: 32),
-
-        // Banner section
-        _sectionTitle('Banner de cierre'),
-        SwitchListTile(
-          title: const Text('Banner activo', style: TextStyle(color: Colors.white)),
-          value: _bannerEnabled,
-          onChanged: (v) => setState(() => _bannerEnabled = v),
-          activeColor: const Color(0xFF64FFDA),
-          contentPadding: EdgeInsets.zero,
-        ),
-        Padding(
-          padding: const EdgeInsets.only(bottom: 12),
-          child: TextField(
-            controller: _bannerTextCtrl,
-            style: const TextStyle(color: Colors.white),
-            maxLines: 2,
-            decoration: InputDecoration(
-              labelText: 'Mensaje del banner',
-              labelStyle: TextStyle(color: Colors.white.withValues(alpha: 0.6)),
-              enabledBorder: OutlineInputBorder(
-                borderSide: BorderSide(color: Colors.white.withValues(alpha: 0.2)),
-              ),
-              focusedBorder: const OutlineInputBorder(
-                borderSide: BorderSide(color: Color(0xFF64FFDA)),
-              ),
-              contentPadding: const EdgeInsets.all(12),
-            ),
-          ),
-        ),
-        Row(
-          children: [
-            Text(
-              _bannerDate != null
-                  ? 'Reapertura: ${_bannerDate!.day}/${_bannerDate!.month}/${_bannerDate!.year}'
-                  : 'Sin fecha de reapertura',
-              style: TextStyle(color: Colors.white.withValues(alpha: 0.6)),
-            ),
-            const Spacer(),
-            TextButton(
-              onPressed: () async {
-                final picked = await showDatePicker(
-                  context: context,
-                  initialDate: DateTime.now().add(const Duration(days: 7)),
-                  firstDate: DateTime.now(),
-                  lastDate: DateTime.now().add(const Duration(days: 365)),
-                );
-                if (picked != null) setState(() => _bannerDate = picked);
-              },
-              child: const Text('Elegir fecha', style: TextStyle(color: Color(0xFF64FFDA))),
-            ),
-          ],
-        ),
-        const SizedBox(height: 8),
-        ElevatedButton.icon(
-          onPressed: _saveBanner,
-          icon: const Icon(Icons.save),
-          label: const Text('Guardar Banner'),
-          style: ElevatedButton.styleFrom(
-            backgroundColor: const Color(0xFF64FFDA),
-            foregroundColor: const Color(0xFF0A0E14),
-            padding: const EdgeInsets.symmetric(vertical: 14),
-            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-          ),
-        ),
-
-        const SizedBox(height: 32),
-
-        // Manual del sistema
-        _sectionTitle('Documentación'),
-        ElevatedButton.icon(
-          onPressed: () => CapacityDocPdfService.generateAndOpen(),
-          icon: const Icon(Icons.picture_as_pdf),
-          label: const Text('Manual Técnico (PDF)'),
-          style: ElevatedButton.styleFrom(
-            backgroundColor: Colors.white.withValues(alpha: 0.08),
-            foregroundColor: Colors.white,
-            padding: const EdgeInsets.symmetric(vertical: 14),
-            shape: RoundedRectangleBorder(
-              borderRadius: BorderRadius.circular(12),
-              side: BorderSide(color: Colors.white.withValues(alpha: 0.15)),
-            ),
-          ),
-        ),
-        const SizedBox(height: 12),
-        ElevatedButton.icon(
-          onPressed: () => UserGuidePdfService.generateAndOpen(),
-          icon: const Icon(Icons.menu_book),
-          label: const Text('Guía de Uso Completa (PDF)'),
-          style: ElevatedButton.styleFrom(
-            backgroundColor: const Color(0xFF64FFDA).withValues(alpha: 0.15),
-            foregroundColor: const Color(0xFF64FFDA),
-            padding: const EdgeInsets.symmetric(vertical: 14),
-            shape: RoundedRectangleBorder(
-              borderRadius: BorderRadius.circular(12),
-              side: const BorderSide(color: Color(0xFF64FFDA)),
-            ),
+            ],
           ),
         ),
         const SizedBox(height: 32),
