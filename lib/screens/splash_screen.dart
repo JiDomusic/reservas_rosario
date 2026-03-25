@@ -56,7 +56,19 @@ class _SplashScreenState extends State<SplashScreen>
   void _startAnimations() async {
     await _fadeController.forward();
     await _scaleController.forward();
-    await Future.delayed(const Duration(milliseconds: 3500));
+
+    // Smart timing: recargar config para tener datos frescos
+    try {
+      await AppConfig.reload();
+    } catch (_) {}
+    if (mounted) setState(() {}); // rebuild con config actualizada
+
+    // Si ya completó onboarding, splash corto; si no, más largo para que lea el banner
+    if (AppConfig.instance.onboardingCompleted) {
+      await Future.delayed(const Duration(milliseconds: 1500));
+    } else {
+      await Future.delayed(const Duration(milliseconds: 4500));
+    }
 
     if (!mounted) return;
 

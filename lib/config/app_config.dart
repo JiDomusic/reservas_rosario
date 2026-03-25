@@ -31,6 +31,9 @@ class AppConfig {
   String? logoColorUrl;
   String? logoWhiteUrl;
   String? backgroundUrl;
+  String colorFondoPagina;
+  bool mostrarNombreSalon;
+  bool mostrarBanner;
   Color primaryColor;
   Color secondaryColor;
   Color tertiaryColor;
@@ -88,6 +91,9 @@ class AppConfig {
     required this.logoColorUrl,
     required this.logoWhiteUrl,
     required this.backgroundUrl,
+    required this.colorFondoPagina,
+    required this.mostrarNombreSalon,
+    required this.mostrarBanner,
     required this.primaryColor,
     required this.secondaryColor,
     required this.tertiaryColor,
@@ -154,6 +160,9 @@ class AppConfig {
       logoColorUrl: _nullIfEmpty(config['logo_color_url'] ?? config['logo_url']),
       logoWhiteUrl: _nullIfEmpty(config['logo_blanco_url'] ?? config['logo_white_url']),
       backgroundUrl: _nullIfEmpty(config['fondo_url']),
+      colorFondoPagina: config['color_fondo_pagina'] ?? '',
+      mostrarNombreSalon: config['mostrar_nombre_salon'] != 'false',
+      mostrarBanner: config['mostrar_banner'] == 'true',
       primaryColor: _parseColor(config['color_primario'], 0xFF194485),
       secondaryColor: _parseColor(config['color_secundario'], 0xFF154080),
       tertiaryColor: _parseColor(config['color_terciario'], 0xFF1B427C),
@@ -205,6 +214,9 @@ class AppConfig {
       'logo_color_url': logoColorUrl ?? '',
       'logo_blanco_url': logoWhiteUrl ?? '',
       'fondo_url': backgroundUrl ?? '',
+      'color_fondo_pagina': colorFondoPagina,
+      'mostrar_nombre_salon': mostrarNombreSalon.toString(),
+      'mostrar_banner': mostrarBanner.toString(),
       'color_primario': _colorToHex(primaryColor),
       'color_secundario': _colorToHex(secondaryColor),
       'color_terciario': _colorToHex(tertiaryColor),

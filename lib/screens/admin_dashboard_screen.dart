@@ -354,6 +354,8 @@ class _ConfigTabState extends State<_ConfigTab> {
   bool _useMultipleAreas = false;
   bool _sharedCapacity = false;
   bool _strictTableOpt = false;
+  bool _mostrarNombreSalon = true;
+  String _colorFondoPagina = '';
 
   @override
   void initState() {
@@ -391,6 +393,8 @@ class _ConfigTabState extends State<_ConfigTab> {
     _useMultipleAreas = c.useMultipleAreas;
     _sharedCapacity = c.sharedCapacity;
     _strictTableOpt = c.strictTableOptimization;
+    _mostrarNombreSalon = c.mostrarNombreSalon;
+    _colorFondoPagina = c.colorFondoPagina;
   }
 
   @override
@@ -447,6 +451,8 @@ class _ConfigTabState extends State<_ConfigTab> {
     c.useMultipleAreas = _useMultipleAreas;
     c.sharedCapacity = _sharedCapacity;
     c.strictTableOptimization = _strictTableOpt;
+    c.mostrarNombreSalon = _mostrarNombreSalon;
+    c.colorFondoPagina = _colorFondoPagina;
     c.onboardingCompleted = true;
 
     try {
@@ -607,6 +613,73 @@ class _ConfigTabState extends State<_ConfigTab> {
         _imageUploadField('Logo color', _logoColorCtrl, 'logo_color.jpg'),
         _imageUploadField('Logo blanco', _logoWhiteCtrl, 'logo_blanco.jpg'),
         _imageUploadField('Foto de fondo', _backgroundCtrl, 'fondo.jpg'),
+        _switchTile(
+          'Mostrar nombre del restaurante',
+          _mostrarNombreSalon,
+          (v) => setState(() => _mostrarNombreSalon = v),
+          subtitle: 'Desactivalo si tu logo ya incluye el nombre',
+        ),
+
+        const SizedBox(height: 24),
+        _sectionTitle('Fondo de tu Página'),
+        Container(
+          margin: const EdgeInsets.only(bottom: 12),
+          padding: const EdgeInsets.all(12),
+          decoration: BoxDecoration(
+            color: const Color(0xFF1A1E25),
+            borderRadius: BorderRadius.circular(12),
+            border: Border.all(color: Colors.white.withValues(alpha: 0.1)),
+          ),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(
+                'La foto de fondo (arriba) cubre toda la página. Si no hay foto, podés elegir un color de fondo.',
+                style: TextStyle(color: Colors.white.withValues(alpha: 0.5), fontSize: 12),
+              ),
+              const SizedBox(height: 12),
+              Row(
+                children: [
+                  Text('Color de fondo: ', style: TextStyle(color: Colors.white.withValues(alpha: 0.7), fontSize: 13)),
+                  const SizedBox(width: 8),
+                  GestureDetector(
+                    onTap: () async {
+                      final color = await _pickColorDialog(
+                        _colorFondoPagina.isNotEmpty
+                            ? Color(int.parse(_colorFondoPagina.replaceFirst('#', '0xFF')))
+                            : Colors.white,
+                      );
+                      if (color != null) {
+                        setState(() {
+                          _colorFondoPagina = '#${(color.r * 255).round().toRadixString(16).padLeft(2, '0')}${(color.g * 255).round().toRadixString(16).padLeft(2, '0')}${(color.b * 255).round().toRadixString(16).padLeft(2, '0')}';
+                        });
+                      }
+                    },
+                    child: Container(
+                      width: 40,
+                      height: 40,
+                      decoration: BoxDecoration(
+                        color: _colorFondoPagina.isNotEmpty
+                            ? Color(int.parse(_colorFondoPagina.replaceFirst('#', '0xFF')))
+                            : Colors.white,
+                        borderRadius: BorderRadius.circular(8),
+                        border: Border.all(color: Colors.white.withValues(alpha: 0.3)),
+                      ),
+                    ),
+                  ),
+                  if (_colorFondoPagina.isNotEmpty) ...[
+                    const SizedBox(width: 8),
+                    IconButton(
+                      icon: const Icon(Icons.clear, color: Colors.red, size: 18),
+                      onPressed: () => setState(() => _colorFondoPagina = ''),
+                      tooltip: 'Quitar color',
+                    ),
+                  ],
+                ],
+              ),
+            ],
+          ),
+        ),
 
         const SizedBox(height: 24),
         _sectionTitle('Colores de Marca'),
@@ -802,7 +875,9 @@ class _ConfigTabState extends State<_ConfigTab> {
       }
 
       final bytes = await picked.readAsBytes();
-      final url = await SupabaseService.instance.uploadImage(fileName, Uint8List.fromList(bytes));
+      final ts = DateTime.now().millisecondsSinceEpoch;
+      final uniqueName = '${ts}_$fileName';
+      final url = await SupabaseService.instance.uploadImage(uniqueName, Uint8List.fromList(bytes));
 
       if (mounted) {
         ScaffoldMessenger.of(context).hideCurrentSnackBar();
@@ -890,14 +965,44 @@ class _ConfigTabState extends State<_ConfigTab> {
     );
   }
 
-  Widget _switchTile(String label, bool value, ValueChanged<bool> onChanged) {
+  Widget _switchTile(String label, bool value, ValueChanged<bool> onChanged, {String? subtitle}) {
     return SwitchListTile(
       title: Text(label, style: const TextStyle(color: Colors.white)),
+      subtitle: subtitle != null ? Text(subtitle, style: TextStyle(color: Colors.white.withValues(alpha: 0.5), fontSize: 12)) : null,
       value: value,
       onChanged: onChanged,
       activeColor: const Color(0xFF64FFDA),
       contentPadding: EdgeInsets.zero,
     );
+  }
+
+  Future<Color?> _pickColorDialog(Color current) async {
+    Color picked = current;
+    final result = await showDialog<Color>(
+      context: context,
+      builder: (context) => AlertDialog(
+        backgroundColor: const Color(0xFF1A1E25),
+        title: const Text('Color de fondo', style: TextStyle(color: Colors.white)),
+        content: ColorPicker(
+          color: current,
+          onColorChanged: (c) => picked = c,
+          pickersEnabled: const {ColorPickerType.wheel: true},
+          width: 36,
+          height: 36,
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context),
+            child: const Text('Cancelar'),
+          ),
+          TextButton(
+            onPressed: () => Navigator.pop(context, picked),
+            child: const Text('OK', style: TextStyle(color: Color(0xFF64FFDA))),
+          ),
+        ],
+      ),
+    );
+    return result;
   }
 
   Widget _colorButton(String label, Color color, ValueChanged<Color> onPick) {

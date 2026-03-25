@@ -242,7 +242,8 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
 
                 return Stack(
                   children: [
-                    Padding(
+                    SingleChildScrollView(
+                    child: Padding(
                       padding: EdgeInsets.symmetric(
                         horizontal: isMobileView ? 16.0 : 32.0,
                       ),
@@ -343,6 +344,7 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
                                       },
                                     ),
                                     const SizedBox(height: 10),
+                                    if (config.mostrarNombreSalon)
                                     Text(
                                       config.subtitle,
                                       style: TextStyle(
@@ -437,6 +439,7 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
                           SizedBox(height: isMobileView ? 8 : 16),
                         ],
                       ),
+                    ),
                     ),
                   ],
                 );
