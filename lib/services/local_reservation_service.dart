@@ -1,3 +1,4 @@
+import 'dart:math';
 import '../config/app_config.dart';
 import 'supabase_service.dart';
 import 'local_block_service.dart';
@@ -61,7 +62,7 @@ class LocalReservationService {
 
       final fechaStr = fecha.toIso8601String().split('T')[0];
       final area = _determineAreaByTime(hora);
-      final id = '${DateTime.now().millisecondsSinceEpoch}';
+      final id = '${DateTime.now().millisecondsSinceEpoch}_${Random().nextInt(99999).toString().padLeft(5, '0')}';
 
       final reserva = {
         'id': id,
@@ -79,9 +80,7 @@ class LocalReservationService {
       };
 
       final storage = SupabaseService.instance;
-      final reservations = await storage.getReservations();
-      reservations.add(reserva);
-      await storage.saveReservations(reservations);
+      await storage.insertReservation(reserva);
       clearReservationsCache();
 
       return {
